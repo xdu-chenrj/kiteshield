@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-#include "bddisasm.h"
+//#include "bddisasm.h"
 
 #include "common/include/rc4.h"
 #include "common/include/obfuscation.h"
@@ -228,33 +228,33 @@ static uint64_t get_base_addr(Elf64_Ehdr *ehdr)
  * additionally contains several of these jumps as a result of handwritten asm
  * or other nonstandard internal constructs.
  */
-static int is_instrumentable_jmp(
-    INSTRUX *ix,
-    uint64_t fcn_start,
-    size_t fcn_size,
-    uint64_t ix_addr)
-{
-  /* Indirect jump (eg. jump to value stored in register or at memory location.
-   * These must always be instrumented as we have no way at pack-time of
-   * knowing where they will hand control, thus the runtime must check them
-   * each time and encrypt/decrypt/do nothing as needed.
-   */
-  if (ix->Instruction == ND_INS_JMPNI)
-    return 1;
-
-  /* Jump with (known at pack-time) relative offset, check if it jumps out of
-   * its function, if so, it requires instrumentation. */
-  if (ix->Instruction == ND_INS_JMPNR || ix->Instruction == ND_INS_Jcc) {
-    /* Rel is relative to next instruction so we must add the length */
-    int64_t displacement =
-      (int64_t) ix->Operands[0].Info.RelativeOffset.Rel + ix->Length;
-    uint64_t jmp_dest = ix_addr + displacement;
-    if (jmp_dest < fcn_start || jmp_dest >= fcn_start + fcn_size)
-      return 1;
-  }
-
-  return 0;
-}
+//static int is_instrumentable_jmp(
+//    INSTRUX *ix,
+//    uint64_t fcn_start,
+//    size_t fcn_size,
+//    uint64_t ix_addr)
+//{
+//  /* Indirect jump (eg. jump to value stored in register or at memory location.
+//   * These must always be instrumented as we have no way at pack-time of
+//   * knowing where they will hand control, thus the runtime must check them
+//   * each time and encrypt/decrypt/do nothing as needed.
+//   */
+//  if (ix->Instruction == ND_INS_JMPNI)
+//    return 1;
+//
+//  /* Jump with (known at pack-time) relative offset, check if it jumps out of
+//   * its function, if so, it requires instrumentation. */
+//  if (ix->Instruction == ND_INS_JMPNR || ix->Instruction == ND_INS_Jcc) {
+//    /* Rel is relative to next instruction so we must add the length */
+//    int64_t displacement =
+//      (int64_t) ix->Operands[0].Info.RelativeOffset.Rel + ix->Length;
+//    uint64_t jmp_dest = ix_addr + displacement;
+//    if (jmp_dest < fcn_start || jmp_dest >= fcn_start + fcn_size)
+//      return 1;
+//  }
+//
+//  return 0;
+//}
 
 /* Instruments all appropriate points in the given function (function entry,
  * ret instructions, applicable jmp instructions) with int3 instructions and
@@ -283,44 +283,44 @@ static int process_func(
   info("encrypting function %s with key %s",
       elf_get_sym_name(elf, func_sym), STRINGIFY_KEY(fcn->key));
 
-  uint8_t *code_ptr = func_start;
-  while (code_ptr < func_start + func_sym->st_size) {
-    /* Iterate over every instruction in the function and determine if it
-     * requires instrumentation */
-    size_t off = (size_t) (code_ptr - func_start);
-    uint64_t addr = base_addr + func_sym->st_value + off;
-
-    INSTRUX ix;
-    NDSTATUS status = NdDecode(&ix, code_ptr, ND_CODE_64, ND_DATA_64);
-    if (!ND_SUCCESS(status)) {
-      err("instruction decoding failed at address %p for function %s",
-            addr, elf_get_sym_name(elf, func_sym));
-      return -1;
-    }
-
-    int is_jmp_to_instrument = is_instrumentable_jmp(
-        &ix,
-        fcn->start_addr,
-        func_sym->st_size,
-        addr);
-    int is_ret_to_instrument =
-      ix.Instruction == ND_INS_RETF || ix.Instruction == ND_INS_RETN;
-
-    if (is_jmp_to_instrument || is_ret_to_instrument) {
-      struct trap_point *tp =
-        (struct trap_point *) &tp_arr[rt_info->ntraps++];
-
-      verbose("\tinstrumenting %s instr at address %p", ix.Mnemonic, addr, off);
-
-      tp->addr = addr;
-      tp->type = is_ret_to_instrument ? TP_RET : TP_JMP;
-      tp->value = *code_ptr;
-      tp->fcn_i = rt_info->nfuncs;
-      *code_ptr = INT3;
-    }
-
-    code_ptr += ix.Length;
-  }
+//  uint8_t *code_ptr = func_start;
+//  while (code_ptr < func_start + func_sym->st_size) {
+//    /* Iterate over every instruction in the function and determine if it
+//     * requires instrumentation */
+//    size_t off = (size_t) (code_ptr - func_start);
+//    uint64_t addr = base_addr + func_sym->st_value + off;
+//
+//    INSTRUX ix;
+//    NDSTATUS status = NdDecode(&ix, code_ptr, ND_CODE_64, ND_DATA_64);
+//    if (!ND_SUCCESS(status)) {
+//      err("instruction decoding failed at address %p for function %s",
+//            addr, elf_get_sym_name(elf, func_sym));
+//      return -1;
+//    }
+//
+//    int is_jmp_to_instrument = is_instrumentable_jmp(
+//        &ix,
+//        fcn->start_addr,
+//        func_sym->st_size,
+//        addr);
+//    int is_ret_to_instrument =
+//      ix.Instruction == ND_INS_RETF || ix.Instruction == ND_INS_RETN;
+//
+//    if (is_jmp_to_instrument || is_ret_to_instrument) {
+//      struct trap_point *tp =
+//        (struct trap_point *) &tp_arr[rt_info->ntraps++];
+//
+//      verbose("\tinstrumenting %s instr at address %p", ix.Mnemonic, addr, off);
+//
+//      tp->addr = addr;
+//      tp->type = is_ret_to_instrument ? TP_RET : TP_JMP;
+//      tp->value = *code_ptr;
+//      tp->fcn_i = rt_info->nfuncs;
+//      *code_ptr = INT3;
+//    }
+//
+//    code_ptr += ix.Length;
+//  }
 
   /* Instrument entry point */
   struct trap_point *tp =
@@ -451,25 +451,25 @@ static int apply_inner_encryption(
     /* We need to do this decoding down here as if we don't, sym->st_value
      * could be 0.
      */
-    uint8_t *func_code_start = elf_get_sym_location(elf, sym);
-    INSTRUX ix;
-    NDSTATUS status = NdDecode(&ix, func_code_start, ND_CODE_64, ND_DATA_64);
-    if (!ND_SUCCESS(status)) {
-      err("instruction decoding failed at address %p for function %s",
-          sym->st_value, elf_get_sym_name(elf, sym));
-      return -1;
-    }
-
-    if (ix.Instruction == ND_INS_JMPNI ||
-        ix.Instruction == ND_INS_JMPNR ||
-        ix.Instruction == ND_INS_Jcc ||
-        ix.Instruction == ND_INS_CALLNI ||
-        ix.Instruction == ND_INS_CALLNR ||
-        ix.Instruction == ND_INS_RETN) {
-      verbose("not encrypting function %s due to first instruction being jmp/ret/call",
-              elf_get_sym_name(elf, sym));
-      continue;
-    }
+//    uint8_t *func_code_start = elf_get_sym_location(elf, sym);
+//    INSTRUX ix;
+//    NDSTATUS status = NdDecode(&ix, func_code_start, ND_CODE_64, ND_DATA_64);
+//    if (!ND_SUCCESS(status)) {
+//      err("instruction decoding failed at address %p for function %s",
+//          sym->st_value, elf_get_sym_name(elf, sym));
+//      return -1;
+//    }
+//
+//    if (ix.Instruction == ND_INS_JMPNI ||
+//        ix.Instruction == ND_INS_JMPNR ||
+//        ix.Instruction == ND_INS_Jcc ||
+//        ix.Instruction == ND_INS_CALLNI ||
+//        ix.Instruction == ND_INS_CALLNR ||
+//        ix.Instruction == ND_INS_RETN) {
+//      verbose("not encrypting function %s due to first instruction being jmp/ret/call",
+//              elf_get_sym_name(elf, sym));
+//      continue;
+//    }
 
     if (process_func(elf, sym, *rt_info, fcn_arr, tp_arr) == -1) {
       err("error instrumenting function %s", elf_get_sym_name(elf, sym));

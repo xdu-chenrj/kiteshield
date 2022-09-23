@@ -1,7 +1,7 @@
-CFLAGS_COMMON = -Wall -Werror -std=gnu99 -I .. -I bddisasm/inc
+CFLAGS_COMMON = -Wall -Werror -std=gnu99 -I ..
 CFLAGS = $(CFLAGS_COMMON) -O2
 
-LDFLAGS = -Lbddisasm/bin/x64/Release -l:libbddisasm.a
+LDFLAGS = -Lbddisasm/bin/x64/Release
 
 SRCS = $(wildcard *.c ../common/*.c)
 OBJS = $(addprefix ./obj/, $(notdir $(SRCS:.c=.o)))
