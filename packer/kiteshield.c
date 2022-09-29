@@ -20,6 +20,19 @@
 #include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
 
+//串口通信
+
+#include <strings.h>
+#include <termios.h>
+#include <malloc.h>
+
+typedef struct termios termios_t;
+typedef struct serial_data {
+    unsigned char databuf[132];//发送/接受数据
+    int serfd;//串口文件描述符
+} ser_Data;
+char key[128];
+
 /* Convenience macro for error checking libc calls */
 #define CK_NEQ_PERROR(stmt, err)                                              \
   do {                                                                        \
@@ -187,14 +200,32 @@ static int produce_output_elf(
   return 0;
 }
 
-static int get_random_bytes(void *buf, size_t len)
-{
-  FILE *f;
-  CK_NEQ_PERROR(f = fopen("/dev/urandom", "r"), NULL);
-  CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
-  CK_NEQ_PERROR(fclose(f), EOF);
+//static int get_random_bytes(void *buf, size_t len)
+//{
+//  FILE *f;
+//  CK_NEQ_PERROR(f = fopen("/dev/urandom", "r"), NULL);
+//  CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
+//  CK_NEQ_PERROR(fclose(f), EOF);
+//
+//  return 0;
+//}
 
-  return 0;
+int convert_str_to_dec(char* str, int start, int end) {
+    int res = 0;
+    for(int i = start; i < end; i++) {
+        res = res * 2 + (str[i] - '0');
+    }
+    return res;
+}
+
+static int get_random_bytes(void *buf, size_t len) {
+    unsigned char *p = (unsigned char *) buf;
+    int index = 0;
+    for (int i = 0; i < strlen(key); i += 8) {
+        int dec = convert_str_to_dec(key, i, i + 8);
+        p[index++] = dec;
+    }
+    return 0;
 }
 
 static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len)
@@ -611,12 +642,136 @@ static void banner()
   );
 }
 
+char *join_str(char *s1, char *s2) {
+    char *result = malloc(strlen(s1) + strlen(s2) + 1);
+    if (result == NULL) exit(1);
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
+char *f_str(char *str, int i, int j) {
+    char *r = malloc(2);
+    r[0] = str[i];
+    r[1] = str[j];
+    return r;
+}
+
+void sersend(ser_Data send);
+char *serrecv(ser_Data recv);
+
+int func() {
+    int serport1fd;
+    /*   进行串口参数设置  */
+    termios_t *ter_s = malloc(sizeof(*ter_s));
+    //不成为控制终端程序，不受其他程序输出输出影响
+    serport1fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
+    if (serport1fd < 0) {
+        printf("%s open faild\r\n", "/dev/ttyUSB0");
+        return -1;
+    } else {
+        printf("connection device /dev/ttyUSB0 successful\n");
+    }
+    bzero(ter_s, sizeof(*ter_s));
+
+    ter_s->c_cflag |= CLOCAL | CREAD; //激活本地连接与接受使能
+    ter_s->c_cflag &= ~CSIZE;//失能数据位屏蔽
+    ter_s->c_cflag |= CS8;//8位数据位
+    ter_s->c_cflag &= ~CSTOPB;//1位停止位
+    ter_s->c_cflag &= ~PARENB;//无校验位
+    ter_s->c_cc[VTIME] = 0;
+    ter_s->c_cc[VMIN] = 0;
+    /*
+        1 VMIN> 0 && VTIME> 0
+        VMIN为最少读取的字符数，当读取到一个字符后，会启动一个定时器，在定时器超时事前，如果已经读取到了VMIN个字符，则read返回VMIN个字符。如果在接收到VMIN个字符之前，定时器已经超时，则read返回已读取到的字符，注意这个定时器会在每次读取到一个字符后重新启用，即重新开始计时，而且是读取到第一个字节后才启用，也就是说超时的情况下，至少读取到一个字节数据。
+        2 VMIN > 0 && VTIME== 0
+        在只有读取到VMIN个字符时，read才返回，可能造成read被永久阻塞。
+        3 VMIN == 0 && VTIME> 0
+        和第一种情况稍有不同，在接收到一个字节时或者定时器超时时，read返回。如果是超时这种情况，read返回值是0。
+        4 VMIN == 0 && VTIME== 0
+        这种情况下read总是立即就返回，即不会被阻塞。----by 解释粘贴自博客园
+    */
+    //设置输入波特率
+    cfsetispeed(ter_s, B115200);
+    //设置输出波特率
+    cfsetospeed(ter_s, B115200);
+//  tcflush(serport1fd, TCIFLUSH);//刷清未处理的输入和/或输出
+    if (tcsetattr(serport1fd, TCSANOW, ter_s) != 0) {
+        printf("com set error!\r\n");
+    }
+
+    unsigned char temp[132];
+    char *helpdata0 = "AA BB 01 00 01 00 00 01 00 00 00 01 00 00 01 00 00 00 01 01 01 00 01 00 00 00 01 00 00 00 00 00 01 00 00 01 00 01 00 00 01 00 00 01 01 01 00 01 00 00 01 00 00 01 00 00 00 01 00 01 01 01 01 00 00 00 01 00 01 00 00 01 00 00 00 00 01 01 01 00 00 01 00 01 00 00 00 01 01 01 01 01 01 00 01 01 01 00 00 01 01 00 00 01 01 00 00 00 01 01 00 01 00 00 01 01 00 00 01 01 01 00 01 01 01 00 00 00 00 00 EE FF";
+    int len = strlen(helpdata0);
+    printf("data len:%d\n", len);
+    int index = 0;
+    for (int i = 0; i + 1 < len; i += 3) {
+        char *pre = "0x";
+        char *suf = f_str(helpdata0, i, i + 1);
+        char *r = join_str(pre, suf);
+        char *str;
+        // printf("%d %d %s\n", i, i + 1, r);
+        long i = strtol(r, &str, 16);
+        temp[index++] = i;
+    }
+    ser_Data snd_data;
+    ser_Data rec_data;
+    snd_data.serfd = serport1fd;
+    rec_data.serfd = serport1fd;
+    //拷贝发送数据
+    memcpy(snd_data.databuf, temp, strlen(temp));
+    sersend(snd_data);
+    serrecv(rec_data);
+    free(ter_s);
+    return 0;
+}
+
+void sersend(ser_Data snd) {
+    int ret;
+    ret = write(snd.serfd, snd.databuf, 132 * 8);
+    if (ret > 0) {
+        printf("send success.\n");
+    } else {
+        printf("send error!\n");
+    }
+}
+
+char *serrecv(ser_Data rec) {
+    int ret;
+    char res[134];
+    int index = 0;
+    while (1) {
+        char buf[512];
+        ret = read(rec.serfd, buf, 512);
+        if (ret > 0) {
+//      printf("recv success,recv size is %d,data is\n%s\n", ret, buf);
+            for (int i = 0; i < ret; i++) {
+                res[index++] = buf[i];
+            }
+        }
+        if (index == 134) {
+            break;
+        }
+    }
+    printf("PUF chip response:\n%s\n", res);
+    char k[128];
+    for (int i = 7, j = 0; i < 134; i++, j++) {
+        key[j] = k[j] = res[i];
+//    printf("%d %c\n", j, res[i]);
+    }
+    key[127] = '1';
+    printf("get key %s\n", k);
+    return k;
+}
+
 int main(int argc, char *argv[])
 {
   char *input_path, *output_path;
   int layer_one_only = 0;
   int c;
   int ret;
+
+  func();
 
   while ((c = getopt (argc, argv, "nv")) != -1) {
     switch (c) {
