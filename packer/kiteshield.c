@@ -339,7 +339,12 @@ static int process_func(
   return 0;
 }
 
-/* Individually encrypts every function in the input ELF with their own keys
+/* 使用自己的密钥分别加密输入ELF中的每个函数
+ * 和仪器功能入口和出口点（视情况而定）
+ * 运行库可以在执行期间加密/解密。
+ */
+
+ /* Individually encrypts every function in the input ELF with their own keys
  * and instruments function entry and exit points as appropriate such that
  * the runtime can encrypt/decrypt during execution.
  */

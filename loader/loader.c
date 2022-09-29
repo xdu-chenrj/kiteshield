@@ -300,6 +300,7 @@ void loader_outer_key_deobfuscate(
   void *loader_start = (void *) loader_phdr->p_vaddr + hdr_adjust;
   size_t loader_size = loader_phdr->p_memsz - hdr_adjust;
 
+  // 加密
   obf_deobf_outer_key(old_key, new_key, loader_start, loader_size);
 }
 
@@ -339,6 +340,7 @@ void *load(void *entry_stacktop)
   struct rc4_key actual_key;
   loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
 
+  // 解密
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
                      packed_bin_phdr->p_memsz,
                      &actual_key);
