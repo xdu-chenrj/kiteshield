@@ -771,7 +771,8 @@ int main(int argc, char *argv[])
   int c;
   int ret;
 
-  func();
+  int r = func();
+  if(r == -1) return 0;
 
   while ((c = getopt (argc, argv, "nv")) != -1) {
     switch (c) {
