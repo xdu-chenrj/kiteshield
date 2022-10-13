@@ -91,15 +91,26 @@ static int read_input_elf(char *path, struct mapped_elf *elf)
   size_t size;
 
   FILE *file;
+  // 只读方式打开
   CK_NEQ_PERROR(file = fopen(path, "r"), NULL);
+  // 将文件指针指向文件的末尾，偏移0字节
   CK_NEQ_PERROR(fseek(file, 0L, SEEK_END), -1);
-
+  // 返回位置标识符的当前值(获取文件字节大小)
   CK_NEQ_PERROR(size = ftell(file), -1);
+  // 申请空间
   CK_NEQ_PERROR(elf_buf = malloc(size), NULL);
-
+  // 将文件指针指向文件开头，偏移0字节
   CK_NEQ_PERROR(fseek(file, 0L, SEEK_SET), -1);
+  /**
+   * size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+   * 从给定流 stream 读取数据到 ptr
+   * ptr -- 这是指向带有最小尺寸 size*nmemb 字节的内存块的指针。
+   * size -- 这是要读取的每个元素的大小，以字节为单位。
+   * nmemb -- 这是元素的个数，每个元素的大小为 size 字节。
+   * stream -- 这是指向 FILE 对象的指针，该 FILE 对象指定了一个输入流
+   */
   CK_NEQ_PERROR(fread(elf_buf, size, 1, file), 0);
-
+  // 关闭文件
   CK_NEQ_PERROR(fclose(file), EOF);
 
   parse_mapped_elf(elf_buf, size, elf);
@@ -349,6 +360,9 @@ static int apply_inner_encryption(
 {
   info("applying inner encryption");
 
+  /**
+   * 如果section的偏移为0，符号表为空，则无法加密内部加密
+   */
   if (elf->ehdr->e_shoff == 0 || !elf->symtab) {
     info("binary is stripped, not applying inner encryption");
     return -1;
@@ -364,13 +378,21 @@ static int apply_inner_encryption(
   (*rt_info)->ntraps = 0;
 
   /* "16 MiB ought to be enough for anybody" */
+  /**
+   * 2^24 = 2^10 * 2^10 * 2^4
+   *      = 1024 * 1024 * 16
+   *      = 1M * 16
+   *
+   */
   struct function *fcn_arr;
   CK_NEQ_PERROR(fcn_arr = malloc(1<<24), NULL);
 
   struct trap_point *tp_arr;
   CK_NEQ_PERROR(tp_arr = malloc(1<<24), NULL);
 
+  // 遍历符号表
   ELF_FOR_EACH_SYMBOL(elf, sym) {
+    // 加密func
     if (ELF64_ST_TYPE(sym->st_info) != STT_FUNC)
       continue;
 
@@ -594,16 +616,7 @@ static void usage()
 
 static void banner()
 {
-  info("                                                    ________\n"
-       " _     _  _              _      _        _      _  |   ||   |\n"
-       "| |   (_)| |            | |    (_)      | |    | | |___||___|\n"
-       "| | __ _ | |_  ___  ___ | |__   _   ___ | |  __| | |___  ___|\n"
-       "| |/ /| || __|/ _ \\/ __|| '_ \\ | | / _ \\| | / _` | |   ||   | \n"
-       "|   < | || |_|  __/\\__ \\| | | || ||  __/| || (_| |  \\  ||  /\n"
-       "|_|\\_\\|_| \\__|\\___||___/|_| |_||_| \\___||_| \\__,_|   \\_||_/\n"
-       "Kiteshield: A packer/protector for x86-64 ELF binaries on Linux\n"
-       "Copyright (c) Rhys Rustad-Elliott, released under the MIT license\n"
-  );
+//  info("\n");
 }
 
 int main(int argc, char *argv[])
@@ -653,6 +666,7 @@ int main(int argc, char *argv[])
    */
   void *loader;
   size_t loader_size;
+  // 是否有1层加密
   if (!layer_one_only) {
     struct runtime_info *rt_info = NULL;
     ret = apply_inner_encryption(&elf, &rt_info);

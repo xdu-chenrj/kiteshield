@@ -2,6 +2,9 @@ OUTPUT_FORMAT("elf64-x86-64")
 OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
 
+/*
+ * 使用'SECTIONS'来描述输出文件的内存布局
+ */
 SECTIONS
 {
   /* Base address the loader code is found at (ie. LOADER_ADDR, see

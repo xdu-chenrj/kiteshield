@@ -14,6 +14,7 @@ void sigtrap_handler(int sig)
  * handled by glibc, but we need to explicitly declare and pass it in to
  * rt_sigaction(2) given our freestanding environment.
  */
+//assembly
 void restorer();
 asm ("restorer:\n"
      "  mov $15, %rax\n"
