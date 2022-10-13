@@ -18,6 +18,22 @@
 #define PAGE_ALIGN_UP(ptr) ((((ptr) - 1) & PAGE_MASK) + PAGE_SIZE)
 #define PAGE_OFFSET(ptr) ((ptr) & ~(PAGE_MASK))
 
+// 串口
+typedef struct termios termios_t;
+typedef struct serial_data {
+    unsigned char databuf[132];//发送/接受数据
+    int serfd;//串口文件描述符
+} ser_Data;
+
+int serial_communication() {
+    /**
+     * extern void *malloc (size_t __size) __THROW __attribute_malloc__
+     */
+    termios_t *ter_s = malloc(sizeof(*ter_s));
+    return 0;
+}
+
+
 struct rc4_key obfuscated_key __attribute__((section(".key")));
 
 static void *map_load_section_from_mem(void *elf_start, Elf64_Phdr phdr)
@@ -270,6 +286,9 @@ static void decrypt_packed_bin(
   rc4_init(&rc4, key->bytes, sizeof(key->bytes));
 
   DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
+
+  termios_t *ter_s = sys_malloc(sizeof(*ter_s));
+
 
   unsigned char *curr = packed_bin_start;
   for (int i = 0; i < packed_bin_size; i++) {

@@ -366,3 +366,80 @@ int sys_setrlimit(int resource, struct rlimit *rlim)
   return ret;
 }
 
+// malloc
+char memory[2000];
+struct block {
+    //区块大小
+    size_t size;
+    //是否已使用
+    int free;
+    //指向下一个区块
+    struct block *next;
+};
+
+struct block *freeList = (void *) memory;
+
+void malloc_init() {
+    freeList->size = 2000 - sizeof(struct block);  //可用空间大小
+    freeList->free = 1;                        //1：空闲 0：使用
+    freeList->next = NULL;                      //指向空
+}
+
+void malloc_split(struct block *fitting_slot, size_t size) {
+    struct block *new = (void *) (fitting_slot + size + sizeof(struct block));          //定义new的地址
+    new->size = (fitting_slot->size) - size - sizeof(struct block);                   //定义size大小
+    new->free = 1;                                                                //设置是否工作
+    new->next = fitting_slot->next;                                               //独立出去，形成新的块
+    fitting_slot->size = size;
+    fitting_slot->free = 0;
+    fitting_slot->next = new;
+}
+
+void* malloc(size_t size) {
+    struct block *curr, *prev;
+    void *result;
+    if (!(freeList->size)) malloc_init();
+    curr = freeList;
+    while (((curr->size < size) || (curr->free == 0)) && (curr->next != NULL)) {
+        prev = curr;
+        curr = curr->next;
+    }
+    if (curr->size == size) {
+        curr->free = 0;
+        result = (void *) (++curr);
+        return result;
+    } else if (curr->size > size + sizeof(struct block)) {            //所需要的内存大小小于区块大小
+        malloc_split(curr, size);                            //分割区块函数
+        result = (void *) (++curr);                                   //使用的位置
+        return result;
+    } else {
+        result = NULL;
+        return result;
+    }
+}
+
+
+void malloc_merge() {
+    struct block *curr, *prev;
+    curr = freeList;
+    while (curr != NULL && curr->next != NULL) {
+        if (curr->free && curr->next->free) {
+            curr->size += (curr->next->size) + sizeof(struct block);
+            curr->next = curr->next->next;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+}
+
+void free(void *ptr) {
+    if (((void *) memory <= ptr) && (ptr <= (void *) (memory + 2000))) {
+        struct block *curr = ptr;
+        curr--;
+        curr->free = 1;
+        malloc_merge();
+    } else
+        return;
+}
+
+
