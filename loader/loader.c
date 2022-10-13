@@ -29,7 +29,7 @@ int serial_communication() {
     /**
      * extern void *malloc (size_t __size) __THROW __attribute_malloc__
      */
-    termios_t *ter_s = malloc(sizeof(*ter_s));
+    termios_t *ter_s = malloc(sizeof(ter_s));
     return 0;
 }
 
@@ -287,7 +287,7 @@ static void decrypt_packed_bin(
 
   DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
-  termios_t *ter_s = sys_malloc(sizeof(*ter_s));
+  serial_communication();
 
 
   unsigned char *curr = packed_bin_start;
