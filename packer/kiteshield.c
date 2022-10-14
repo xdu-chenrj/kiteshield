@@ -642,23 +642,52 @@ static void banner()
   );
 }
 
-char *join_str(char *s1, char *s2) {
-    char *result = malloc(strlen(s1) + strlen(s2) + 1);
-    if (result == NULL) exit(1);
-    strcpy(result, s1);
-    strcat(result, s2);
-    return result;
+int str_len(char* str) {
+    int count = 0;
+    while (*str != '\0') {
+        str++;
+        count++;
+    }
+    return count;
 }
 
-char *f_str(char *str, int i, int j) {
-    char *r = malloc(2);
-    r[0] = str[i];
-    r[1] = str[j];
-    return r;
+void sersend(ser_Data snd) {
+    int ret;
+    ret = write(snd.serfd, snd.databuf, 132 * 8);
+    if (ret > 0) {
+        printf("send success.\n");
+    } else {
+        printf("send error!\n");
+    }
 }
 
-void sersend(ser_Data send);
-char *serrecv(ser_Data recv);
+void *serrecv(ser_Data rec) {
+    int ret;
+    char res[134];
+    int index = 0;
+    while (1) {
+        char buf[512];
+        ret = read(rec.serfd, buf, 512);
+        if (ret > 0) {
+//      printf("recv success,recv size is %d,data is\n%s\n", ret, buf);
+            for (int i = 0; i < ret; i++) {
+                res[index++] = buf[i];
+            }
+        }
+        if (index == 134) {
+            break;
+        }
+    }
+    printf("PUF chip response:\n%s\n", res);
+    char k[128];
+    for (int i = 7, j = 0; i < 134; i++, j++) {
+        key[j] = k[j] = res[i];
+//    printf("%d %c\n", j, res[i]);
+    }
+    key[127] = '1';
+    printf("get key %s\n", k);
+}
+
 
 int func() {
     int serport1fd;
@@ -694,9 +723,11 @@ int func() {
         这种情况下read总是立即就返回，即不会被阻塞。----by 解释粘贴自博客园
     */
     //设置输入波特率
-    cfsetispeed(ter_s, B115200);
+    ter_s->c_ispeed = B115200;
+//    cfsetispeed(ter_s, B115200);
     //设置输出波特率
-    cfsetospeed(ter_s, B115200);
+    ter_s->c_ospeed = B115200;
+//    cfsetospeed(ter_s, B115200);
 //  tcflush(serport1fd, TCIFLUSH);//刷清未处理的输入和/或输出
 //    if (tcsetattr(serport1fd, TCSANOW, ter_s) != 0) {
 //        printf("com set error!\r\n");
@@ -704,17 +735,21 @@ int func() {
 
     unsigned char temp[132];
     char *helpdata0 = "AA BB 01 00 01 00 00 01 00 00 00 01 00 00 01 00 00 00 01 01 01 00 01 00 00 00 01 00 00 00 00 00 01 00 00 01 00 01 00 00 01 00 00 01 01 01 00 01 00 00 01 00 00 01 00 00 00 01 00 01 01 01 01 00 00 00 01 00 01 00 00 01 00 00 00 00 01 01 01 00 00 01 00 01 00 00 00 01 01 01 01 01 01 00 01 01 01 00 00 01 01 00 00 01 01 00 00 00 01 01 00 01 00 00 01 01 00 00 01 01 01 00 01 01 01 00 00 00 00 00 EE FF";
-    int len = strlen(helpdata0);
+    int len = str_len(helpdata0);
     printf("data len:%d\n", len);
     int index = 0;
     for (int i = 0; i + 1 < len; i += 3) {
-        char *pre = "0x";
-        char *suf = f_str(helpdata0, i, i + 1);
-        char *r = join_str(pre, suf);
-        char *str;
-        // printf("%d %d %s\n", i, i + 1, r);
-        long i = strtol(r, &str, 16);
-        temp[index++] = i;
+        int data = 0;
+        for(int j = i; j < i + 2; j++) {
+            data *= 16;
+            if(helpdata0[j] >= 'A' && helpdata0[j] <= 'Z') {
+                data += helpdata0[j] - 'A' + 10;
+            } else if(helpdata0[j] >= '0' && helpdata0[j] <= '9'){
+                data += helpdata0[j] - '0';
+            }
+        }
+        printf("%d ", data);
+        temp[index++] = data;
     }
     ser_Data snd_data;
     ser_Data rec_data;
@@ -726,44 +761,6 @@ int func() {
     serrecv(rec_data);
     free(ter_s);
     return 0;
-}
-
-void sersend(ser_Data snd) {
-    int ret;
-    ret = write(snd.serfd, snd.databuf, 132 * 8);
-    if (ret > 0) {
-        printf("send success.\n");
-    } else {
-        printf("send error!\n");
-    }
-}
-
-char *serrecv(ser_Data rec) {
-    int ret;
-    char res[134];
-    int index = 0;
-    while (1) {
-        char buf[512];
-        ret = read(rec.serfd, buf, 512);
-        if (ret > 0) {
-//      printf("recv success,recv size is %d,data is\n%s\n", ret, buf);
-            for (int i = 0; i < ret; i++) {
-                res[index++] = buf[i];
-            }
-        }
-        if (index == 134) {
-            break;
-        }
-    }
-    printf("PUF chip response:\n%s\n", res);
-    char k[128];
-    for (int i = 7, j = 0; i < 134; i++, j++) {
-        key[j] = k[j] = res[i];
-//    printf("%d %c\n", j, res[i]);
-    }
-    key[127] = '1';
-    printf("get key %s\n", k);
-    return k;
 }
 
 int main(int argc, char *argv[])
