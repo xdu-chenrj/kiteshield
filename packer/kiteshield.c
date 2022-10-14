@@ -664,15 +664,17 @@ int func() {
     int serport1fd;
     /*   进行串口参数设置  */
     termios_t *ter_s = malloc(sizeof(ter_s));
+    char* dev = "/dev/ttyUSB0";
     //不成为控制终端程序，不受其他程序输出输出影响
-    serport1fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
+    serport1fd = open(dev, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+    printf("The result of opening the serial port device: %d\n", serport1fd);
     if (serport1fd < 0) {
-        printf("%s open faild\r\n", "/dev/ttyUSB0");
+        printf("%s open faild\r\n", dev);
         return -1;
     } else {
         printf("connection device /dev/ttyUSB0 successful\n");
     }
-    bzero(ter_s, sizeof(ter_s));
+//    bzero(ter_s, sizeof(ter_s));
 
     ter_s->c_cflag |= CLOCAL | CREAD; //激活本地连接与接受使能
     ter_s->c_cflag &= ~CSIZE;//失能数据位屏蔽
@@ -696,9 +698,9 @@ int func() {
     //设置输出波特率
     cfsetospeed(ter_s, B115200);
 //  tcflush(serport1fd, TCIFLUSH);//刷清未处理的输入和/或输出
-    if (tcsetattr(serport1fd, TCSANOW, ter_s) != 0) {
-        printf("com set error!\r\n");
-    }
+//    if (tcsetattr(serport1fd, TCSANOW, ter_s) != 0) {
+//        printf("com set error!\r\n");
+//    }
 
     unsigned char temp[132];
     char *helpdata0 = "AA BB 01 00 01 00 00 01 00 00 00 01 00 00 01 00 00 00 01 01 01 00 01 00 00 00 01 00 00 00 00 00 01 00 00 01 00 01 00 00 01 00 00 01 01 01 00 01 00 00 01 00 00 01 00 00 00 01 00 01 01 01 01 00 00 00 01 00 01 00 00 01 00 00 00 00 01 01 01 00 00 01 00 01 00 00 00 01 01 01 01 01 01 00 01 01 01 00 00 01 01 00 00 01 01 00 00 00 01 01 00 01 00 00 01 01 00 00 01 01 01 00 01 01 01 00 00 00 00 00 EE FF";
