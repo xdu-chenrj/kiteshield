@@ -30,6 +30,11 @@
 #define O_WRONLY 01
 #define O_RDWR 02
 
+# define O_NOCTTY 0400  /* Not fcntl.  */
+# define O_NDELAY O_NONBLOCK
+# define O_NONBLOCK   04000
+
+
 /* lseek syscall constants/defines */
 #define SEEK_SET 0
 #define SEEK_CUR 1

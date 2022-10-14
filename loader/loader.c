@@ -30,7 +30,9 @@ int serial_communication() {
      * extern void *malloc (size_t __size) __THROW __attribute_malloc__
      */
     termios_t *ter_s = malloc(sizeof(ter_s));
-    return 0;
+    int serport1fd = sys_open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+
+    return serport1fd;
 }
 
 
@@ -287,7 +289,7 @@ static void decrypt_packed_bin(
 
   DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
-  serial_communication();
+  DEBUG_FMT("open serial %d\n", serial_communication());
 
 
   unsigned char *curr = packed_bin_start;
