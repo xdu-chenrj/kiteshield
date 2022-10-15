@@ -25,6 +25,65 @@
 #define PROT_EXEC 0x4
 #define PROT_NONE 0x0
 
+/* Serial communication open func constant defines */
+#define O_RDWR        02
+#define O_NOCTTY    0400  /* Not fcntl.  */
+#define O_NDELAY O_NONBLOCK
+#define O_NONBLOCK   04000
+
+/* c_cflag bits.  */
+#define CSIZE	0000060
+#define   CS5	0000000
+#define   CS6	0000020
+#define   CS7	0000040
+#define   CS8	0000060
+#define CSTOPB	0000100
+#define CREAD	0000200
+#define PARENB	0000400
+#define PARODD	0001000
+#define HUPCL	0002000
+#define CLOCAL	0004000
+
+
+/* c_cc characters */
+#define VINTR 0
+#define VQUIT 1
+#define VERASE 2
+#define VKILL 3
+#define VEOF 4
+#define VTIME 5
+#define VMIN 6
+#define VSWTC 7
+#define VSTART 8
+#define VSTOP 9
+#define VSUSP 10
+#define VEOL 11
+#define VREPRINT 12
+#define VDISCARD 13
+#define VWERASE 14
+#define VLNEXT 15
+#define VEOL2 16
+
+
+/* Extra output baud rates (not in POSIX).  */
+#define  B57600    0010001
+#define  B115200   0010002
+#define  B230400   0010003
+#define  B460800   0010004
+#define  B500000   0010005
+#define  B576000   0010006
+#define  B921600   0010007
+#define  B1000000  0010010
+#define  B1152000  0010011
+#define  B1500000  0010012
+#define  B2000000  0010013
+#define  B2500000  0010014
+#define  B3000000  0010015
+#define  B3500000  0010016
+#define  B4000000  0010017
+#define __MAX_BAUD B4000000
+
+
 /* open syscall constants/defines */
 #define O_RDONLY 00
 #define O_WRONLY 01
@@ -370,6 +429,8 @@ int sys_stat(
 int sys_setrlimit(
     int resource,
     struct rlimit *rlim);
+
+void* malloc(size_t size);
 
 #endif /* __KITESHIELD_SYSCALLS_H */
 

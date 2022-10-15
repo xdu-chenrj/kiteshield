@@ -642,14 +642,6 @@ static void banner()
   );
 }
 
-int str_len(char* str) {
-    int count = 0;
-    while (*str != '\0') {
-        str++;
-        count++;
-    }
-    return count;
-}
 
 void sersend(ser_Data snd) {
     int ret;
@@ -661,7 +653,7 @@ void sersend(ser_Data snd) {
     }
 }
 
-void *serrecv(ser_Data rec) {
+void serrecv(ser_Data rec) {
     int ret;
     char res[134];
     int index = 0;
@@ -679,13 +671,11 @@ void *serrecv(ser_Data rec) {
         }
     }
     printf("PUF chip response:\n%s\n", res);
-    char k[128];
-    for (int i = 7, j = 0; i < 134; i++, j++) {
-        key[j] = k[j] = res[i];
-//    printf("%d %c\n", j, res[i]);
+    for (int i = 7, j = 0; i < 7 + 127; i++, j++) {
+        key[j] = res[i];
     }
     key[127] = '1';
-    printf("get key %s\n", k);
+    printf("get key %s\n", key);
 }
 
 
@@ -729,14 +719,13 @@ int func() {
     ter_s->c_ospeed = B115200;
 //    cfsetospeed(ter_s, B115200);
 //  tcflush(serport1fd, TCIFLUSH);//刷清未处理的输入和/或输出
-//    if (tcsetattr(serport1fd, TCSANOW, ter_s) != 0) {
-//        printf("com set error!\r\n");
-//    }
-
+    if (tcsetattr(serport1fd, TCSANOW, ter_s) != 0) {
+        printf("com set error!\r\n");
+    }
     unsigned char temp[132];
     char *helpdata0 = "AA BB 01 00 01 00 00 01 00 00 00 01 00 00 01 00 00 00 01 01 01 00 01 00 00 00 01 00 00 00 00 00 01 00 00 01 00 01 00 00 01 00 00 01 01 01 00 01 00 00 01 00 00 01 00 00 00 01 00 01 01 01 01 00 00 00 01 00 01 00 00 01 00 00 00 00 01 01 01 00 00 01 00 01 00 00 00 01 01 01 01 01 01 00 01 01 01 00 00 01 01 00 00 01 01 00 00 00 01 01 00 01 00 00 01 01 00 00 01 01 01 00 01 01 01 00 00 00 00 00 EE FF";
-    int len = str_len(helpdata0);
-    printf("data len:%d\n", len);
+    int len = strlen(helpdata0);
+    printf("send data size :%d\n", len);
     int index = 0;
     for (int i = 0; i + 1 < len; i += 3) {
         int data = 0;
@@ -748,7 +737,7 @@ int func() {
                 data += helpdata0[j] - '0';
             }
         }
-        printf("%d ", data);
+//        printf("%d ", data);
         temp[index++] = data;
     }
     ser_Data snd_data;
