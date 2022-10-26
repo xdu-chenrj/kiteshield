@@ -8,7 +8,7 @@ _start:
 
 #ifdef USE_RUNTIME
   # Fork, starting the runtime in the parent process and returning in the child
-  call do_fork
+  BL do_fork
 
   # We've now forked. The runtime is running in our parent and will not return.
   # here. Only the child will execute the code below.
@@ -16,15 +16,20 @@ _start:
 
   # Load function has the following signature
   # void load(void *entry_stacktop)
-  mov %rsp, %rdi # entry_stacktop
-  call load
+  # mov %rsp, %rdi # entry_stacktop
+  BL load
 
   # Return value of load is the address of ld.so to jump to, store it
-  push %rax
+  # push %rax
+  STR x0 , [sp]
 
 #ifdef USE_RUNTIME
   # Binary has been mapped into memory, have the parent ptrace the child
-  call child_start_ptrace
+  sub sp, sp, #32
+  stp x29, x30, [sp, #16]
+  BL child_start_ptrace
+  ldp x29, x30, [sp, #16]
+  add sp, sp, #32
 #endif
 
   # The x86-64 SysV ABI specifies that %rdx contains the address of a function
@@ -42,5 +47,5 @@ _start:
   # strictly necessary, but we'll do it anyways to make things as deterministic
   # as possible.
 
-  pop %rbx
-  jmp *%rbx
+  LDR x0 , [sp]
+  B x0
