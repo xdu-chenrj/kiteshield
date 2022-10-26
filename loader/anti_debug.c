@@ -4,8 +4,7 @@
 
 int sigtrap_counter = 0;
 
-void sigtrap_handler(int sig)
-{
+void sigtrap_handler(int sig) {
   DEBUG("caught SIGTRAP, incrementing SIGTRAP count (antidebug)");
   sigtrap_counter++;
 }
@@ -14,14 +13,13 @@ void sigtrap_handler(int sig)
  * handled by glibc, but we need to explicitly declare and pass it in to
  * rt_sigaction(2) given our freestanding environment.
  */
-//assembly
+// assembly
 void restorer();
-asm ("restorer:\n"
-     "  mov $15, %rax\n"
-     "  syscall");
+asm("restorer:\n"
+    "  mov x8, #139\n"
+    "  svc #0");
 
-void antidebug_signal_init()
-{
+void antidebug_signal_init() {
 #ifdef NO_ANTIDEBUG
   return;
 #endif
@@ -45,8 +43,7 @@ void antidebug_signal_init()
  * one more thing a reverse engineer has to get around, which makes it a
  * positive.
  */
-void antidebug_prctl_set_nondumpable()
-{
+void antidebug_prctl_set_nondumpable() {
 #ifdef NO_ANTIDEBUG
   return;
 #endif
@@ -62,8 +59,7 @@ void antidebug_prctl_set_nondumpable()
  * in dynamically linked packed program's context, the last can be set to to
  * provide potentially useful information on linker operations.
  */
-void antidebug_remove_ld_env_vars(void *entry_stacktop)
-{
+void antidebug_remove_ld_env_vars(void *entry_stacktop) {
 #ifdef NO_ANTIDEBUG
   return;
 #endif
@@ -74,7 +70,8 @@ void antidebug_remove_ld_env_vars(void *entry_stacktop)
   environ++;
 
   /* Advance past argv */
-  while (*(++environ) != 0);
+  while (*(++environ) != 0)
+    ;
   environ++;
 
   for (char **v = environ; *v != NULL; v++) {
@@ -90,4 +87,3 @@ void antidebug_remove_ld_env_vars(void *entry_stacktop)
     }
   }
 }
-
