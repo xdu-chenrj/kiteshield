@@ -11,8 +11,8 @@
  * sys_* prefix to emphasize that fact.
  */
 
-#include <stdint.h>
 #include "loader/include/types.h"
+#include <stdint.h>
 
 /* mmap syscall constants/defines */
 #define MAP_SHARED 0x01
@@ -30,10 +30,9 @@
 #define O_WRONLY 01
 #define O_RDWR 02
 
-# define O_NOCTTY 0400  /* Not fcntl.  */
-# define O_NDELAY O_NONBLOCK
-# define O_NONBLOCK   04000
-
+#define O_NOCTTY 0400 /* Not fcntl.  */
+#define O_NDELAY O_NONBLOCK
+#define O_NONBLOCK 04000
 
 /* lseek syscall constants/defines */
 #define SEEK_SET 0
@@ -94,7 +93,7 @@ enum __ptrace_setoptions {
   PTRACE_O_TRACESECCOMP = 0x00000080,
   PTRACE_O_EXITKILL = 0x00100000,
   PTRACE_O_SUSPEND_SECCOMP = 0x00200000,
-  PTRACE_O_MASK  = 0x003000ff
+  PTRACE_O_MASK = 0x003000ff
 };
 
 enum __ptrace_eventcodes {
@@ -104,7 +103,7 @@ enum __ptrace_eventcodes {
   PTRACE_EVENT_EXEC = 4,
   PTRACE_EVENT_VFORK_DONE = 5,
   PTRACE_EVENT_EXIT = 6,
-  PTRACE_EVENT_SECCOMP  = 7,
+  PTRACE_EVENT_SECCOMP = 7,
   PTRACE_EVENT_STOP = 128
 };
 
@@ -114,9 +113,7 @@ struct __ptrace_peeksiginfo_args {
   int32_t nr;
 };
 
-enum __ptrace_peeksiginfo_flags {
-  PTRACE_PEEKSIGINFO_SHARED = (1 << 0)
-};
+enum __ptrace_peeksiginfo_flags { PTRACE_PEEKSIGINFO_SHARED = (1 << 0) };
 
 struct __ptrace_seccomp_metadata {
   uint64_t filter_off;
@@ -155,27 +152,26 @@ struct user_regs_struct {
 };
 
 /* wait4 syscall constants/defines */
-#define WEXITSTATUS(status) (((status) & 0xff00) >> 8)
-#define WTERMSIG(status) ((status) & 0x7f)
+#define WEXITSTATUS(status) (((status)&0xff00) >> 8)
+#define WTERMSIG(status) ((status)&0x7f)
 #define WSTOPSIG(status) WEXITSTATUS(status)
 #define WIFEXITED(status) (WTERMSIG(status) == 0)
-#define WIFSIGNALED(status) \
-  (((signed char) (((status) & 0x7f) + 1) >> 1) > 0)
-#define WIFSTOPPED(status) (((status) & 0xff) == 0x7f)
+#define WIFSIGNALED(status) (((signed char)(((status)&0x7f) + 1) >> 1) > 0)
+#define WIFSTOPPED(status) (((status)&0xff) == 0x7f)
 #ifdef WCONTINUED
-# define WIFCONTINUED(status) ((status) == W_CONTINUED)
+#define WIFCONTINUED(status) ((status) == W_CONTINUED)
 #endif
 
-#define WNOHANG		0x00000001
-#define WUNTRACED	0x00000002
-#define WSTOPPED	WUNTRACED
-#define WEXITED		0x00000004
-#define WCONTINUED	0x00000008
-#define WNOWAIT		0x01000000
+#define WNOHANG 0x00000001
+#define WUNTRACED 0x00000002
+#define WSTOPPED WUNTRACED
+#define WEXITED 0x00000004
+#define WCONTINUED 0x00000008
+#define WNOWAIT 0x01000000
 
-#define __WNOTHREAD	0x20000000
-#define __WALL		0x40000000
-#define __WCLONE	0x80000000
+#define __WNOTHREAD 0x20000000
+#define __WALL 0x40000000
+#define __WCLONE 0x80000000
 
 /* rt_sigaction syscall constants/defines */
 struct kernel_sigaction {
@@ -185,54 +181,54 @@ struct kernel_sigaction {
   unsigned long sa_mask;
 };
 
-#define SA_NOCLDSTOP	0x00000001u
-#define SA_NOCLDWAIT	0x00000002u
-#define SA_SIGINFO	0x00000004u
-#define SA_ONSTACK	0x08000000u
-#define SA_RESTART	0x10000000u
-#define SA_NODEFER	0x40000000u
-#define SA_RESETHAND	0x80000000u
+#define SA_NOCLDSTOP 0x00000001u
+#define SA_NOCLDWAIT 0x00000002u
+#define SA_SIGINFO 0x00000004u
+#define SA_ONSTACK 0x08000000u
+#define SA_RESTART 0x10000000u
+#define SA_NODEFER 0x40000000u
+#define SA_RESETHAND 0x80000000u
 
-#define SA_NOMASK	SA_NODEFER
-#define SA_ONESHOT	SA_RESETHAND
+#define SA_NOMASK SA_NODEFER
+#define SA_ONESHOT SA_RESETHAND
 
-#define SA_RESTORER	0x04000000
+#define SA_RESTORER 0x04000000
 
 /* prctl constants/defines */
-#define PR_GET_DUMPABLE   3
-#define PR_SET_DUMPABLE   4
+#define PR_GET_DUMPABLE 3
+#define PR_SET_DUMPABLE 4
 
 /* stat constants/defines */
 struct stat {
-	unsigned long long	st_dev;
-	unsigned char	__pad0[4];
+  unsigned long long st_dev;
+  unsigned char __pad0[4];
 
-	unsigned long	__st_ino;
+  unsigned long __st_ino;
 
-	unsigned int	st_mode;
-	unsigned int	st_nlink;
+  unsigned int st_mode;
+  unsigned int st_nlink;
 
-	unsigned long	st_uid;
-	unsigned long	st_gid;
+  unsigned long st_uid;
+  unsigned long st_gid;
 
-	unsigned long long	st_rdev;
-	unsigned char	__pad3[4];
+  unsigned long long st_rdev;
+  unsigned char __pad3[4];
 
-	long long	st_size;
-	unsigned long	st_blksize;
+  long long st_size;
+  unsigned long st_blksize;
 
-	unsigned long long	st_blocks;
+  unsigned long long st_blocks;
 
-	unsigned long	st_atime;
-	unsigned long	st_atime_nsec;
+  unsigned long st_atime;
+  unsigned long st_atime_nsec;
 
-	unsigned long	st_mtime;
-	unsigned int	st_mtime_nsec;
+  unsigned long st_mtime;
+  unsigned int st_mtime_nsec;
 
-	unsigned long	st_ctime;
-	unsigned long	st_ctime_nsec;
+  unsigned long st_ctime;
+  unsigned long st_ctime_nsec;
 
-	unsigned long long	st_ino;
+  unsigned long long st_ino;
 };
 
 /* setrlimit constants/defines */
@@ -263,120 +259,79 @@ enum rlimit_resource {
 };
 
 /* clone constants/defines */
-#define CSIGNAL              0x000000ff
-#define CLONE_VM             0x00000100
-#define CLONE_FS             0x00000200
-#define CLONE_FILES          0x00000400
-#define CLONE_SIGHAND        0x00000800
-#define CLONE_PTRACE         0x00002000
-#define CLONE_VFORK          0x00004000
-#define CLONE_PARENT         0x00008000
-#define CLONE_THREAD         0x00010000
-#define CLONE_NEWNS          0x00020000
-#define CLONE_SYSVSEM        0x00040000
-#define CLONE_SETTLS         0x00080000
-#define CLONE_PARENT_SETTID  0x00100000
+#define CSIGNAL 0x000000ff
+#define CLONE_VM 0x00000100
+#define CLONE_FS 0x00000200
+#define CLONE_FILES 0x00000400
+#define CLONE_SIGHAND 0x00000800
+#define CLONE_PTRACE 0x00002000
+#define CLONE_VFORK 0x00004000
+#define CLONE_PARENT 0x00008000
+#define CLONE_THREAD 0x00010000
+#define CLONE_NEWNS 0x00020000
+#define CLONE_SYSVSEM 0x00040000
+#define CLONE_SETTLS 0x00080000
+#define CLONE_PARENT_SETTID 0x00100000
 #define CLONE_CHILD_CLEARTID 0x00200000
-#define CLONE_DETACHED       0x00400000
-#define CLONE_UNTRACED       0x00800000
-#define CLONE_CHILD_SETTID   0x01000000
-#define CLONE_NEWCGROUP      0x02000000
-#define CLONE_NEWUTS         0x04000000
-#define CLONE_NEWIPC         0x08000000
-#define CLONE_NEWUSER        0x10000000
-#define CLONE_NEWPID         0x20000000
-#define CLONE_NEWNET         0x40000000
-#define CLONE_IO             0x80000000
+#define CLONE_DETACHED 0x00400000
+#define CLONE_UNTRACED 0x00800000
+#define CLONE_CHILD_SETTID 0x01000000
+#define CLONE_NEWCGROUP 0x02000000
+#define CLONE_NEWUTS 0x04000000
+#define CLONE_NEWIPC 0x08000000
+#define CLONE_NEWUSER 0x10000000
+#define CLONE_NEWPID 0x20000000
+#define CLONE_NEWNET 0x40000000
+#define CLONE_IO 0x80000000
 
 /* syscall wrapper prototypes */
-ssize_t sys_write(
-    int fd,
-    const char *s,
-    size_t count);
+ssize_t sys_write(int fd, const char *s, size_t count);
 
-ssize_t sys_read(
-    int fd,
-    void *buf,
-    size_t count);
+ssize_t sys_read(int fd, void *buf, size_t count);
 
-off_t sys_lseek(
-    int fd,
-    off_t offset,
-    int whence);
+off_t sys_lseek(int fd, off_t offset, int whence);
 
-int sys_open(
-    const char *pathname,
-    int flags,
-    int mode);
+//int sys_open(const char *pathname, int flags, int mode);
+int sys_open(int dirfd, const char *pathname, int flags, int mode)
 
-int sys_close(
-    int fd);
 
-void sys_exit(
-    int status) __attribute__((noreturn));
+int sys_close(int fd);
 
-void *sys_mmap(
-    void *addr,
-    size_t length,
-    int prot,
-    int flags,
-    int fd,
-    off_t offset);
+void sys_exit(int status) __attribute__((noreturn));
 
-int sys_munmap(
-    void *addr,
-    size_t length);
+void *sys_mmap(void *addr, size_t length, int prot, int flags, int fd,
+               off_t offset);
 
-int sys_mprotect(
-    void *addr,
-    size_t len,
-    int prot);
+int sys_munmap(void *addr, size_t length);
 
-long sys_ptrace(
-    enum __ptrace_request,
-    pid_t pid,
-    void *addr,
-    void *data);
+int sys_mprotect(void *addr, size_t len, int prot);
 
-pid_t sys_wait4(
-    pid_t pid,
-    int *wstatus,
-    int options);
+long sys_ptrace(enum __ptrace_request, pid_t pid, void *addr, void *data);
+
+pid_t sys_wait4(pid_t pid, int *wstatus, int options);
 
 pid_t sys_fork();
 
-int sys_kill(
-    pid_t pid,
-    int sig);
+int sys_kill(pid_t pid, int sig);
 
-int sys_tgkill(
-    pid_t tgid,
-    pid_t tid,
-    int sig);
+int sys_tgkill(pid_t tgid, pid_t tid, int sig);
 
 pid_t sys_getpid();
 
-int sys_rt_sigaction(
-    int sig,
-    const struct kernel_sigaction *act,
-    const struct kernel_sigaction *oact);
+int sys_rt_sigaction(int sig, const struct kernel_sigaction *act,
+                     const struct kernel_sigaction *oact);
 
-int sys_prctl(
-    int option,
-    unsigned long arg2,
-    unsigned long arg3,
-    unsigned long arg4,
-    unsigned long arg5);
+int sys_prctl(int option, unsigned long arg2, unsigned long arg3,
+              unsigned long arg4, unsigned long arg5);
 
-int sys_stat(
-    const char *pathname,
-    struct stat *statbuf);
+// int sys_stat(
+//     const char *pathname,
+//     struct stat *statbuf);
+int sys_stat(int dirfd, const char *pathname, int flags, unsigned int mask,
+             struct stat *statbuf);
 
-int sys_setrlimit(
-    int resource,
-    struct rlimit *rlim);
+int sys_setrlimit(int resource, struct rlimit *rlim);
 
-void* malloc(size_t size);
+void *malloc(size_t size);
 
 #endif /* __KITESHIELD_SYSCALLS_H */
-

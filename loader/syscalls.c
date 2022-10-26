@@ -5,17 +5,18 @@ ssize_t sys_write(int fd, const char *s, size_t count)
 {
   ssize_t ret = 0;
 
-  asm volatile (
-      "mov $1, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%rdx\n"
-      "syscall\n"
-      "mov %%rax, %0"
-  :   "=rm" (ret)
-  :   "rm" (fd), "rm" (s), "rm" (count)
-  :   "rax", "edi", "rsi", "rdx");
-
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #64 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(fd),[val1]"r"(s),[val2]"r"(count)
+  );
   return ret;
 }
 
@@ -23,16 +24,18 @@ ssize_t sys_read(int fd, void *buf, size_t count)
 {
   ssize_t ret = 0;
 
-  asm volatile (
-      "mov $0, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%rdx\n"
-      "syscall\n"
-      "mov %%rax, %0"
-  :   "=rm" (ret)
-  :   "rm" (fd), "rm" (buf), "rm" (count)
-  :   "rax", "edi", "rsi", "rdx");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #63 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(fd),[val1]"r"(buf),[val2]"r"(count)
+  );
 
   return ret;
 }
@@ -41,34 +44,39 @@ off_t sys_lseek(int fd, off_t offset, int whence)
 {
   off_t ret = 0;
 
-  asm volatile (
-      "mov $8, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%edx\n"
-      "syscall\n"
-      "mov %%rax, %0"
-  :   "=rm" (ret)
-  :   "rm" (fd), "rm" (offset), "rm" (whence)
-  :   "rax", "edi", "rsi", "edx");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #62 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(fd),[val1]"r"(offset),[val2]"r"(whence)
+  );
 
   return ret;
 }
 
-int sys_open(const char *pathname, int flags, int mode)
+int sys_open(int dirfd, const char *pathname, int flags, int mode)
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $2, %%rax\n"
-      "mov %1, %%rdi\n"
-      "mov %2, %%esi\n"
-      "mov %3, %%edx\n"
-      "syscall\n"
-      "mov %%eax, %0"
-  :   "+rm" (ret)
-  :   "rm" (pathname), "rm" (flags), "rm" (mode)
-  :   "rax", "rdi", "esi", "edx");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "mov x3, %[val3]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #56 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(dirfd),[val1]"r"(pathname),[val2]"r"(flags),[val3]"r"(mode)
+  );
 
   return ret;
 }
@@ -77,32 +85,40 @@ int sys_close(int fd)
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $3, %%rax\n"
-      "mov %1, %%edi\n"
-      "syscall\n"
-      "mov %%eax, %0"
-  :   "+rm" (ret)
-  :   "rm" (fd)
-  :   "rax", "edi");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #57 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(fd)
+  );
 
   return ret;
 }
 
 void sys_exit(int status)
 {
-  asm volatile (
-      "mov $60, %%rax\n"
-      "mov %0, %%edi\n"
-      "syscall"
-  :
-  :   "rm" (status)
-  :   "rax", "edi");
+  int ret = 0;
+
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #93 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(status)
+  );
 
   /* Required so GCC accepts __attribute__((noreturn)) on this function */
   while(1) {}
 }
-
+// parameter & return value
+// long long int sys_mmap(long long *addr, int length, int prot, int flags, int fd, int offset)
 void *sys_mmap(
     void *addr,
     size_t length,
@@ -113,39 +129,42 @@ void *sys_mmap(
 {
   void *ret = NULL;
 
-  asm volatile (
-      "mov $9, %%rax\n"
-      "mov %1, %%rdi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%edx\n"
-      "mov %4, %%r10d\n"
-      "mov %5, %%r8d\n"
-      "mov %6, %%r9\n"
-      "syscall\n"
-      "mov %%rax, %0"
-  :   "+rm" (ret)
-  :   "rm" (addr), "rm" (length), "rm" (prot), "rm" (flags), "rm" (fd),
-      "rm" (offset)
-  :   "rax", "rdi", "rsi", "edx", "r10", "r8", "r9");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "mov x3, %[val3]\n"
+      "mov x4, %[val4]\n"
+      "mov x5, %[val5]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #222 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(addr),[val1]"r"(length),[val2]"r"(prot),[val3]"r"(flags),[val4]"r"(fd),[val5]"r"(offset)
+  );
 
   return ret;
 }
 
-int sys_munmap(
-    void *addr,
-    size_t length)
+// parameter
+// int sys_munmap(long long int addr, size_t length)
+int sys_munmap(void *addr, size_t length)
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $11, %%rax\n"
-      "mov %1, %%rdi\n"
-      "mov %2, %%rsi\n"
-      "syscall\n"
-      "mov %%eax, %0"
-  :   "+rm" (ret)
-  :   "rm" (addr), "rm" (length)
-  :   "rax", "rdi", "rsi");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #215 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(addr),[val1]"r"(length)
+  );
 
   return ret;
 }
@@ -154,16 +173,18 @@ int sys_mprotect(void *addr, size_t len, int prot)
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $10, %%rax\n"
-      "mov %1, %%rdi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%edx\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (addr), "rm" (len), "rm" (prot)
-  :   "rax", "rdi", "rsi", "edx");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #226 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(addr),[val1]"r"(len),[val2]"r"(prot)
+  );
 
   return ret;
 }
@@ -182,17 +203,19 @@ long sys_ptrace(
    *
    * This function exposes the kernel-level interface.
    */
-  asm volatile (
-      "mov $101, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%esi\n"
-      "mov %3, %%rdx\n"
-      "mov %4, %%r10\n"
-      "syscall\n"
-      "mov %%rax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (request), "rm" (pid), "rm" (addr), "rm" (data)
-  :   "rax", "edi", "esi", "rdx", "r10");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "mov x3, %[val3]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #117 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(request),[val1]"r"(pid),[val2]"r"(addr),[val3]"r"(data)
+  );
 
   return ret;
 }
@@ -204,17 +227,18 @@ pid_t sys_wait4(pid_t pid, int *wstatus, int options)
   /* We pass NULL for rusage to simpify the function signature (no need for
    * that parameter currently)
    */
-  asm volatile (
-      "mov $61, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%edx\n"
-      "mov $0, %%r10\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (pid), "rm" ((uint64_t) wstatus), "rm" (options)
-  :   "rax", "edi", "esi", "rdx", "r10");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #260 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(pid),[val1]"r"(wstatus),[val2]"r"(options)
+  );
 
   return ret;
 }
@@ -223,13 +247,14 @@ pid_t sys_fork()
 {
   pid_t ret = 0;
 
-  asm volatile (
-      "mov $57, %%rax\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :
-  :   "rax");
+  asm volatile(
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #1071 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+  );
 
   return ret;
 }
@@ -238,15 +263,17 @@ int sys_kill(pid_t pid, int sig)
 {
   pid_t ret = 0;
 
-  asm volatile (
-      "mov $62, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%esi\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (pid), "rm" (sig)
-  :   "rax", "edi", "esi");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #129 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(pid),[val1]"r"(sig)
+  );
 
   return ret;
 }
@@ -255,16 +282,18 @@ int sys_tgkill(pid_t tgid, pid_t tid, int sig)
 {
   pid_t ret = 0;
 
-  asm volatile (
-      "mov $234, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%esi\n"
-      "mov %3, %%edx\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (tgid), "rm" (tid), "rm" (sig)
-  :   "rax", "edi", "esi", "edx");
+  asm volatile(
+        "mov x0, %[val0]\n"
+        "mov x1, %[val1]\n"
+        "mov x2, %[val2]\n"
+        "stp x29, x30, [sp, -16]!\n"
+        "mov x8, #131 \n"
+        "svc #0 \n"
+        "ldp x29, x30, [sp], 16\n"
+        "mov %[result], x0"
+        :[result]"=r"(ret)
+        :[val0]"r"(tgid),[val1]"r"(tid),[val2]"r"(sig)
+    );
 
   return ret;
 }
@@ -273,13 +302,14 @@ pid_t sys_getpid()
 {
   pid_t ret = 0;
 
-  asm volatile (
-      "mov $39, %%rax\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :
-  :   "rax");
+  asm volatile(
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #172 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+  );
 
   return ret;
 }
@@ -292,17 +322,18 @@ int sys_rt_sigaction(
   int ret = 0;
   size_t sigsetsize = sizeof(act->sa_mask);
 
-  asm volatile (
-      "mov $13, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%rdx\n"
-      "mov %4, %%r10\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (sig), "rm" (act), "rm" (oact), "rm" (sigsetsize)
-  :   "rax", "edi", "rsi", "rdx", "r10");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #134 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(sig),[val1]"r"(act),[val2]"r"(oact)
+  );
 
   return ret;
 }
@@ -316,35 +347,43 @@ int sys_prctl(
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $157, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "mov %3, %%rdx\n"
-      "mov %4, %%r10\n"
-      "mov %5, %%r8\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (option), "rm" (arg2), "rm" (arg3), "rm" (arg4), "rm" (arg5)
-  :   "rax", "edi", "rsi", "rdx", "r10", "r8");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "mov x3, %[val3]\n"
+      "mov x4, %[val4]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #167 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(option),[val1]"r"(arg2),[val2]"r"(arg3),[val3]"r"(arg4),[val4]"r"(arg5)
+  );
 
   return ret;
 }
 
-int sys_stat(const char *pathname, struct stat *statbuf)
+//int sys_stat(const char *pathname, struct stat *statbuf)
+int sys_stat(int dirfd, const char *pathname, int flags, unsigned int mask, struct stat *statbuf)
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $4, %%rax\n"
-      "mov %1, %%rdi\n"
-      "mov %2, %%rsi\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (pathname), "rm" (statbuf)
-  :   "rax", "rdi", "rsi");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "mov x2, %[val2]\n"
+      "mov x3, %[val3]\n"
+      "mov x4, %[val4]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #222 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(dirfd),[val1]"r"(pathname),[val2]"r"(flags),[val3]"r"(mask),[val4]"r"(statbuf)
+  );
 
   return ret;
 }
@@ -353,15 +392,17 @@ int sys_setrlimit(int resource, struct rlimit *rlim)
 {
   int ret = 0;
 
-  asm volatile (
-      "mov $160, %%rax\n"
-      "mov %1, %%edi\n"
-      "mov %2, %%rsi\n"
-      "syscall\n"
-      "mov %%eax, %0\n"
-  :   "+rm" (ret)
-  :   "rm" (resource), "rm" (rlim)
-  :   "rax", "edi", "rsi");
+  asm volatile(
+      "mov x0, %[val0]\n"
+      "mov x1, %[val1]\n"
+      "stp x29, x30, [sp, -16]!\n"
+      "mov x8, #164 \n"
+      "svc #0 \n"
+      "ldp x29, x30, [sp], 16\n"
+      "mov %[result], x0"
+      :[result]"=r"(ret)
+      :[val0]"r"(resource),[val1]"r"(rlim)
+  );
 
   return ret;
 }

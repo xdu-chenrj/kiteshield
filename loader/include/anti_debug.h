@@ -1,20 +1,20 @@
 #ifndef __KITESHIELD_ANTI_DEBUG_H
 #define __KITESHIELD_ANTI_DEBUG_H
 
-#include "loader/include/types.h"
-#include "loader/include/syscalls.h"
-#include "loader/include/signal.h"
 #include "loader/include/debug.h"
-#include "loader/include/string.h"
 #include "loader/include/obfuscated_strings.h"
+#include "loader/include/signal.h"
+#include "loader/include/string.h"
+#include "loader/include/syscalls.h"
+#include "loader/include/types.h"
 
 #define TRACED_MSG "We're being traced, exiting (-DNO_ANTIDEBUG to suppress)"
 
-static const char *nextline(const char *curr_line)
-{
+static const char *nextline(const char *curr_line) {
   const char *ptr = curr_line;
   while (*ptr != '\0') {
-    if (*ptr == '\n') return ptr + 1;
+    if (*ptr == '\n')
+      return ptr + 1;
     ptr++;
   }
 
@@ -27,8 +27,7 @@ static const char *nextline(const char *curr_line)
  * Always inline this function so that a reverse engineer doesn't have to
  * simply neuter a single function in the compiled code to defeat calls to it
  * everywhere. */
-static inline int __attribute__((always_inline)) antidebug_proc_check_traced()
-{
+static inline int __attribute__((always_inline)) antidebug_proc_check_traced() {
 #ifdef NO_ANTIDEBUG
   return 0;
 #endif
@@ -54,7 +53,7 @@ static inline int __attribute__((always_inline)) antidebug_proc_check_traced()
   if (stat.st_size != 0)
     return 1;
 
-  int fd =  sys_open(proc_path, O_RDONLY, 0);
+  int fd = sys_open(-100, proc_path, O_RDONLY, 0);
   DIE_IF_FMT(fd < 0, "could not open %s error %d", proc_path, fd);
 
   char buf[4096]; /* Should be enough to hold any /proc/<pid>/status */
@@ -66,21 +65,24 @@ static inline int __attribute__((always_inline)) antidebug_proc_check_traced()
   const char *line = buf;
   char *tracerpid_field = DEOBF_STR(TRACERPID_PROC_FIELD); /* "TracerPid:" */
   do {
-    if (strncmp(line, tracerpid_field, 10) != 0) continue;
+    if (strncmp(line, tracerpid_field, 10) != 0)
+      continue;
 
     /* Strip spaces between : and the pid */
     const char *curr = line + 10;
     while (*curr != '\0') {
-      if (*curr != ' ' && *curr != '\t') break;
+      if (*curr != ' ' && *curr != '\t')
+        break;
       curr++;
     }
 
-    if (curr[0] == '0' && curr[1] == '\n') return 0;
-    else return 1;
+    if (curr[0] == '0' && curr[1] == '\n')
+      return 0;
+    else
+      return 1;
   } while ((line = nextline(line)) != NULL);
 
-  DEBUG(
-      "Could not find TracerPid in /proc/self/status, assuming we're traced");
+  DEBUG("Could not find TracerPid in /proc/self/status, assuming we're traced");
   return 1;
 }
 
@@ -94,14 +96,13 @@ static inline int __attribute__((always_inline)) antidebug_proc_check_traced()
  * Always inline antidebug_signal_check() for the same reasons as
  * check_traced() above. */
 extern int sigtrap_counter;
-static inline int __attribute__((always_inline)) antidebug_signal_check()
-{
+static inline int __attribute__((always_inline)) antidebug_signal_check() {
 #ifdef NO_ANTIDEBUG
   return 0;
 #endif
 
   int oldval = sigtrap_counter;
-  asm volatile ("int3");
+  asm volatile("int3");
 
   return sigtrap_counter != oldval + 1;
 }
@@ -114,8 +115,7 @@ static inline int __attribute__((always_inline)) antidebug_signal_check()
  * check_traced() above.
  */
 static inline void __attribute__((always_inline))
-antidebug_rlimit_set_zero_core()
-{
+antidebug_rlimit_set_zero_core() {
 #ifdef NO_ANTIDEBUG
   return;
 #endif
@@ -132,4 +132,3 @@ void antidebug_prctl_set_nondumpable();
 void antidebug_remove_ld_env_vars(void *entry_stacktop);
 
 #endif /* __KITESHIELD_ANTI_DEBUG_H */
-
