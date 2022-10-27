@@ -48,4 +48,4 @@ _start:
   # as possible.
 
   LDR x0 , [sp]
-  jmp x0
+  B x0
