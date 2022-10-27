@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#define INT3 0xCC
+#define INT3 0x00BE
 
 /* Address at which the loader is initially loaded by the kernel on exec (ie.
  * the p_vaddr field in the binary). Note that if this is updated, the base
@@ -99,4 +99,3 @@ struct runtime_info {
 } __attribute__((packed));
 
 #endif /* __KITESHIELD_DEFS_H */
-
