@@ -47,5 +47,5 @@ _start:
   # strictly necessary, but we'll do it anyways to make things as deterministic
   # as possible.
 
-  LDR x0 , [sp]
-  B x0
+  pop %rbx
+  jmp *%rbx
