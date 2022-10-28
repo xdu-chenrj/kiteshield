@@ -231,6 +231,7 @@ pid_t sys_wait4(pid_t pid, int *wstatus, int options)
       "mov x0, %[val0]\n"
       "mov x1, %[val1]\n"
       "mov x2, %[val2]\n"
+      "mov x3, #0\n"
       "stp x29, x30, [sp, -16]!\n"
       "mov x8, #260 \n"
       "svc #0 \n"
