@@ -346,7 +346,7 @@ void *load(void *entry_stacktop) {
   void *program_entry = packed_bin_ehdr->e_type == ET_EXEC
                             ? (void *)packed_bin_ehdr->e_entry
                             : load_addr + packed_bin_ehdr->e_entry;
-  DEBUG("before setup_auxv");
+  DEBUG("prepare setup_auxv");
   setup_auxv(argv, program_entry,
              (void *)(load_addr + packed_bin_ehdr->e_phoff), interp_base,
              packed_bin_ehdr->e_phnum);

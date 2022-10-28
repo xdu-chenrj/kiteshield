@@ -380,6 +380,7 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
 
 static void handle_trap(struct thread *thread, struct thread_list *tlist,
                         int wstatus) {
+  DEBUG("start handle trap");
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
 
   long res;
