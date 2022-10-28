@@ -766,6 +766,9 @@ static void handle_thread_exit(struct thread *thread,
   if (!is_tg_leader) {
     DEBUG("not tg leader");
     pid_t res = sys_wait4(tid, &wstatus, __WALL);
+
+    DEBUG_FMT("wstatus %d\n", wstatus);
+
     DIE_IF_FMT(res < 0, "wait4 syscall failed with error %d", res);
 
     DIE_IF_FMT(!WIFEXITED(wstatus), "tid %d expected to exit but did not", tid);
@@ -777,6 +780,8 @@ static void handle_thread_exit(struct thread *thread,
     DEBUG("tg last thread");
     pid_t res = sys_wait4(tgid, &wstatus, __WALL);
     DIE_IF_FMT(res < 0, "wait4 syscall failed with error %d", res);
+
+    DEBUG_FMT("wstatus %d\n", wstatus);
 
     DIE_IF_FMT(!WIFEXITED(wstatus), "tid %d expected to exit but did not",
                tgid);
