@@ -25,16 +25,16 @@ typedef struct serial_data {
   int serfd;                  // 串口文件描述符
 } ser_Data;
 
-int serial_communication() {
-  /**
-   * extern void *malloc (size_t __size) __THROW __attribute_malloc__
-   */
-  termios_t *ter_s = malloc(sizeof(ter_s));
-  int serport1fd =
-      sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777);
-
-  return serport1fd;
-}
+// int serial_communication() {
+//   /**
+//    * extern void *malloc (size_t __size) __THROW __attribute_malloc__
+//    */
+//   termios_t *ter_s = malloc(sizeof(ter_s));
+//   int serport1fd =
+//       sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+//
+//   return serport1fd;
+// }
 
 struct rc4_key obfuscated_key __attribute__((section(".key")));
 
@@ -267,7 +267,7 @@ static void decrypt_packed_bin(void *packed_bin_start, size_t packed_bin_size,
 
   DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
-  DEBUG_FMT("open serial %d\n", serial_communication());
+  //  DEBUG_FMT("open serial %d\n", serial_communication());
 
   unsigned char *curr = packed_bin_start;
   for (int i = 0; i < packed_bin_size; i++) {
