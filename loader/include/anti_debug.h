@@ -103,7 +103,7 @@ static inline int __attribute__((always_inline)) antidebug_signal_check() {
 #endif
 
   int oldval = sigtrap_counter;
-  asm volatile("BRK");
+  asm volatile("BRK #0xAB");
 
   return sigtrap_counter != oldval + 1;
 }
