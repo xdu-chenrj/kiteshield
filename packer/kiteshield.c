@@ -1,62 +1,55 @@
-#include <stdio.h>
-#include <time.h>
 #include <elf.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
-//#include "bddisasm.h"
+// #include "bddisasm.h"
 
-#include "common/include/rc4.h"
-#include "common/include/obfuscation.h"
 #include "common/include/defs.h"
+#include "common/include/obfuscation.h"
+#include "common/include/rc4.h"
 #include "packer/include/elfutils.h"
 
-#include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
+#include "loader/out/generated_loader_rt.h"
 
 /* Convenience macro for error checking libc calls */
-#define CK_NEQ_PERROR(stmt, err)                                              \
-  do {                                                                        \
-    if ((stmt) == err) {                                                      \
-      perror(#stmt);                                                          \
-      return -1;                                                              \
-    }                                                                         \
-  } while(0)
+#define CK_NEQ_PERROR(stmt, err)                                               \
+  do {                                                                         \
+    if ((stmt) == err) {                                                       \
+      perror(#stmt);                                                           \
+      return -1;                                                               \
+    }                                                                          \
+  } while (0)
 
-#define STRINGIFY_KEY(key)                                                    \
-  ({ char buf[(sizeof(key.bytes) * 2) + 1];                                   \
-     for (int i = 0; i < sizeof(key.bytes); i++) {                            \
-       sprintf(&buf[i * 2], "%02hhx", key.bytes[i]);                          \
-     };                                                                       \
-     buf; })
+#define STRINGIFY_KEY(key)                                                     \
+  ({                                                                           \
+    char buf[(sizeof(key.bytes) * 2) + 1];                                     \
+    for (int i = 0; i < sizeof(key.bytes); i++) {                              \
+      sprintf(&buf[i * 2], "%02hhx", key.bytes[i]);                            \
+    };                                                                         \
+    buf;                                                                       \
+  })
 
 static int log_verbose = 0;
 
 /* Needs to be defined for bddisasm */
-int nd_vsnprintf_s(
-    char *buffer,
-    size_t sizeOfBuffer,
-    size_t count,
-    const char *format,
-    va_list argptr)
-{
+int nd_vsnprintf_s(char *buffer, size_t sizeOfBuffer, size_t count,
+                   const char *format, va_list argptr) {
   return vsnprintf(buffer, sizeOfBuffer, format, argptr);
 }
 
 /* Needs to be defined for bddisasm */
-void* nd_memset(void *s, int c, size_t n)
-{
-  return memset(s, c, n);
-}
+void *nd_memset(void *s, int c, size_t n) { return memset(s, c, n); }
 
-static void err(char *fmt, ...)
-{
+static void err(char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
 
@@ -64,8 +57,7 @@ static void err(char *fmt, ...)
   printf("\n");
 }
 
-static void info(char *fmt, ...)
-{
+static void info(char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
 
@@ -73,8 +65,7 @@ static void info(char *fmt, ...)
   printf("\n");
 }
 
-static void verbose(char *fmt, ...)
-{
+static void verbose(char *fmt, ...) {
   if (!log_verbose)
     return;
 
@@ -85,8 +76,7 @@ static void verbose(char *fmt, ...)
   printf("\n");
 }
 
-static int read_input_elf(char *path, struct mapped_elf *elf)
-{
+static int read_input_elf(char *path, struct mapped_elf *elf) {
   void *elf_buf;
   size_t size;
 
@@ -118,20 +108,14 @@ static int read_input_elf(char *path, struct mapped_elf *elf)
   return 0;
 }
 
-static int produce_output_elf(
-    FILE *output_file,
-    struct mapped_elf *elf,
-    void *loader,
-    size_t loader_size)
-{
+static int produce_output_elf(FILE *output_file, struct mapped_elf *elf,
+                              void *loader, size_t loader_size) {
   /* The entry address is located right after the struct rc4_key (used for
    * passing decryption key and other info to loader), which is the first
    * sizeof(struct rc4_key) bytes of the loader code (guaranteed by the linker
    * script) */
-  Elf64_Addr entry_vaddr = LOADER_ADDR +
-                           sizeof(Elf64_Ehdr) +
-                           (sizeof(Elf64_Phdr) * 2) +
-                           sizeof(struct rc4_key);
+  Elf64_Addr entry_vaddr = LOADER_ADDR + sizeof(Elf64_Ehdr) +
+                           (sizeof(Elf64_Phdr) * 2) + sizeof(struct rc4_key);
   Elf64_Ehdr ehdr;
   ehdr.e_ident[EI_MAG0] = ELFMAG0;
   ehdr.e_ident[EI_MAG1] = ELFMAG1;
@@ -145,7 +129,7 @@ static int produce_output_elf(
   memset(ehdr.e_ident + EI_PAD, 0, EI_NIDENT - EI_PAD);
 
   ehdr.e_type = ET_EXEC;
-  ehdr.e_machine = EM_X86_64;
+  ehdr.e_machine = EM_AARCH64;
   ehdr.e_version = EV_CURRENT;
   ehdr.e_entry = entry_vaddr;
   ehdr.e_phoff = sizeof(Elf64_Ehdr);
@@ -185,12 +169,11 @@ static int produce_output_elf(
   app_phdr.p_filesz = elf->size;
   app_phdr.p_memsz = elf->size;
   app_phdr.p_flags = PF_R | PF_W;
-  app_phdr.p_align =  0x200000;
+  app_phdr.p_align = 0x200000;
   CK_NEQ_PERROR(fwrite(&app_phdr, sizeof(app_phdr), 1, output_file), 0);
 
   /* Loader code/data */
-  CK_NEQ_PERROR(
-      fwrite(loader, loader_size, 1, output_file), 0);
+  CK_NEQ_PERROR(fwrite(loader, loader_size, 1, output_file), 0);
 
   /* Packed application contents */
   CK_NEQ_PERROR(fwrite(elf->start, elf->size, 1, output_file), 0);
@@ -198,8 +181,7 @@ static int produce_output_elf(
   return 0;
 }
 
-static int get_random_bytes(void *buf, size_t len)
-{
+static int get_random_bytes(void *buf, size_t len) {
   FILE *f;
   CK_NEQ_PERROR(f = fopen("/dev/urandom", "r"), NULL);
   CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
@@ -208,8 +190,7 @@ static int get_random_bytes(void *buf, size_t len)
   return 0;
 }
 
-static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len)
-{
+static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len) {
   struct rc4_state rc4;
   rc4_init(&rc4, key->bytes, sizeof(key->bytes));
 
@@ -220,8 +201,7 @@ static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len)
   }
 }
 
-static uint64_t get_base_addr(Elf64_Ehdr *ehdr)
-{
+static uint64_t get_base_addr(Elf64_Ehdr *ehdr) {
   /* Return the base address that the binary is to be mapped in at runtime. If
    * statically linked, use absolute addresses (ie. base address = 0).
    * Otherwise, everything is relative to DYN_PROG_BASE_ADDR. */
@@ -239,45 +219,42 @@ static uint64_t get_base_addr(Elf64_Ehdr *ehdr)
  * additionally contains several of these jumps as a result of handwritten asm
  * or other nonstandard internal constructs.
  */
-//static int is_instrumentable_jmp(
-//    INSTRUX *ix,
-//    uint64_t fcn_start,
-//    size_t fcn_size,
-//    uint64_t ix_addr)
+// static int is_instrumentable_jmp(
+//     INSTRUX *ix,
+//     uint64_t fcn_start,
+//     size_t fcn_size,
+//     uint64_t ix_addr)
 //{
-//  /* Indirect jump (eg. jump to value stored in register or at memory location.
-//   * These must always be instrumented as we have no way at pack-time of
-//   * knowing where they will hand control, thus the runtime must check them
-//   * each time and encrypt/decrypt/do nothing as needed.
-//   */
-//  if (ix->Instruction == ND_INS_JMPNI)
-//    return 1;
+//   /* Indirect jump (eg. jump to value stored in register or at memory
+//   location.
+//    * These must always be instrumented as we have no way at pack-time of
+//    * knowing where they will hand control, thus the runtime must check them
+//    * each time and encrypt/decrypt/do nothing as needed.
+//    */
+//   if (ix->Instruction == ND_INS_JMPNI)
+//     return 1;
 //
-//  /* Jump with (known at pack-time) relative offset, check if it jumps out of
-//   * its function, if so, it requires instrumentation. */
-//  if (ix->Instruction == ND_INS_JMPNR || ix->Instruction == ND_INS_Jcc) {
-//    /* Rel is relative to next instruction so we must add the length */
-//    int64_t displacement =
-//      (int64_t) ix->Operands[0].Info.RelativeOffset.Rel + ix->Length;
-//    uint64_t jmp_dest = ix_addr + displacement;
-//    if (jmp_dest < fcn_start || jmp_dest >= fcn_start + fcn_size)
-//      return 1;
-//  }
+//   /* Jump with (known at pack-time) relative offset, check if it jumps out of
+//    * its function, if so, it requires instrumentation. */
+//   if (ix->Instruction == ND_INS_JMPNR || ix->Instruction == ND_INS_Jcc) {
+//     /* Rel is relative to next instruction so we must add the length */
+//     int64_t displacement =
+//       (int64_t) ix->Operands[0].Info.RelativeOffset.Rel + ix->Length;
+//     uint64_t jmp_dest = ix_addr + displacement;
+//     if (jmp_dest < fcn_start || jmp_dest >= fcn_start + fcn_size)
+//       return 1;
+//   }
 //
-//  return 0;
-//}
+//   return 0;
+// }
 
 /* Instruments all appropriate points in the given function (function entry,
  * ret instructions, applicable jmp instructions) with int3 instructions and
  * encrypts it with a newly generated key.
  */
-static int process_func(
-    struct mapped_elf *elf,
-    Elf64_Sym *func_sym,
-    struct runtime_info *rt_info,
-    struct function *func_arr,
-    struct trap_point *tp_arr)
-{
+static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
+                        struct runtime_info *rt_info, struct function *func_arr,
+                        struct trap_point *tp_arr) {
   uint8_t *func_start = elf_get_sym_location(elf, func_sym);
   uint64_t base_addr = get_base_addr(elf->ehdr);
   struct function *fcn = &func_arr[rt_info->nfuncs];
@@ -291,51 +268,51 @@ static int process_func(
   fcn->name[sizeof(fcn->name) - 1] = '\0';
 #endif
 
-  info("encrypting function %s with key %s",
-      elf_get_sym_name(elf, func_sym), STRINGIFY_KEY(fcn->key));
+  info("encrypting function %s with key %s", elf_get_sym_name(elf, func_sym),
+       STRINGIFY_KEY(fcn->key));
 
-//  uint8_t *code_ptr = func_start;
-//  while (code_ptr < func_start + func_sym->st_size) {
-//    /* Iterate over every instruction in the function and determine if it
-//     * requires instrumentation */
-//    size_t off = (size_t) (code_ptr - func_start);
-//    uint64_t addr = base_addr + func_sym->st_value + off;
-//
-//    INSTRUX ix;
-//    NDSTATUS status = NdDecode(&ix, code_ptr, ND_CODE_64, ND_DATA_64);
-//    if (!ND_SUCCESS(status)) {
-//      err("instruction decoding failed at address %p for function %s",
-//            addr, elf_get_sym_name(elf, func_sym));
-//      return -1;
-//    }
-//
-//    int is_jmp_to_instrument = is_instrumentable_jmp(
-//        &ix,
-//        fcn->start_addr,
-//        func_sym->st_size,
-//        addr);
-//    int is_ret_to_instrument =
-//      ix.Instruction == ND_INS_RETF || ix.Instruction == ND_INS_RETN;
-//
-//    if (is_jmp_to_instrument || is_ret_to_instrument) {
-//      struct trap_point *tp =
-//        (struct trap_point *) &tp_arr[rt_info->ntraps++];
-//
-//      verbose("\tinstrumenting %s instr at address %p", ix.Mnemonic, addr, off);
-//
-//      tp->addr = addr;
-//      tp->type = is_ret_to_instrument ? TP_RET : TP_JMP;
-//      tp->value = *code_ptr;
-//      tp->fcn_i = rt_info->nfuncs;
-//      *code_ptr = INT3;
-//    }
-//
-//    code_ptr += ix.Length;
-//  }
+  //  uint8_t *code_ptr = func_start;
+  //  while (code_ptr < func_start + func_sym->st_size) {
+  //    /* Iterate over every instruction in the function and determine if it
+  //     * requires instrumentation */
+  //    size_t off = (size_t) (code_ptr - func_start);
+  //    uint64_t addr = base_addr + func_sym->st_value + off;
+  //
+  //    INSTRUX ix;
+  //    NDSTATUS status = NdDecode(&ix, code_ptr, ND_CODE_64, ND_DATA_64);
+  //    if (!ND_SUCCESS(status)) {
+  //      err("instruction decoding failed at address %p for function %s",
+  //            addr, elf_get_sym_name(elf, func_sym));
+  //      return -1;
+  //    }
+  //
+  //    int is_jmp_to_instrument = is_instrumentable_jmp(
+  //        &ix,
+  //        fcn->start_addr,
+  //        func_sym->st_size,
+  //        addr);
+  //    int is_ret_to_instrument =
+  //      ix.Instruction == ND_INS_RETF || ix.Instruction == ND_INS_RETN;
+  //
+  //    if (is_jmp_to_instrument || is_ret_to_instrument) {
+  //      struct trap_point *tp =
+  //        (struct trap_point *) &tp_arr[rt_info->ntraps++];
+  //
+  //      verbose("\tinstrumenting %s instr at address %p", ix.Mnemonic, addr,
+  //      off);
+  //
+  //      tp->addr = addr;
+  //      tp->type = is_ret_to_instrument ? TP_RET : TP_JMP;
+  //      tp->value = *code_ptr;
+  //      tp->fcn_i = rt_info->nfuncs;
+  //      *code_ptr = INT3;
+  //    }
+  //
+  //    code_ptr += ix.Length;
+  //  }
 
   /* Instrument entry point */
-  struct trap_point *tp =
-    (struct trap_point *) &tp_arr[rt_info->ntraps++];
+  struct trap_point *tp = (struct trap_point *)&tp_arr[rt_info->ntraps++];
   tp->addr = base_addr + func_sym->st_value;
   tp->type = TP_FCN_ENTRY;
   tp->value = *func_start;
@@ -354,10 +331,8 @@ static int process_func(
  * and instruments function entry and exit points as appropriate such that
  * the runtime can encrypt/decrypt during execution.
  */
-static int apply_inner_encryption(
-    struct mapped_elf *elf,
-    struct runtime_info **rt_info)
-{
+static int apply_inner_encryption(struct mapped_elf *elf,
+                                  struct runtime_info **rt_info) {
   info("applying inner encryption");
 
   /**
@@ -385,10 +360,10 @@ static int apply_inner_encryption(
    *
    */
   struct function *fcn_arr;
-  CK_NEQ_PERROR(fcn_arr = malloc(1<<24), NULL);
+  CK_NEQ_PERROR(fcn_arr = malloc(1 << 24), NULL);
 
   struct trap_point *tp_arr;
-  CK_NEQ_PERROR(tp_arr = malloc(1<<24), NULL);
+  CK_NEQ_PERROR(tp_arr = malloc(1 << 24), NULL);
 
   // 遍历符号表
   ELF_FOR_EACH_SYMBOL(elf, sym) {
@@ -422,16 +397,17 @@ static int apply_inner_encryption(
       /* We have alias->name if DEBUG_OUTPUT is set, so output it for a bit
        * more useful info */
 #ifndef DEBUG_OUTPUT
-        verbose(
-            "not encrypting function %s at %p as it aliases or overlaps one already encrypted at %p of len %u",
-            elf_get_sym_name(elf, sym), alias->start_addr, alias->len);
+      verbose("not encrypting function %s at %p as it aliases or overlaps one "
+              "already encrypted at %p of len %u",
+              elf_get_sym_name(elf, sym), alias->start_addr, alias->len);
 #else
-        verbose(
-            "not encrypting function %s at %p as it aliases or overlaps %s at %p of len %u",
-            elf_get_sym_name(elf, sym), base + sym->st_value, alias->name, alias->start_addr, alias->len);
+      verbose("not encrypting function %s at %p as it aliases or overlaps %s "
+              "at %p of len %u",
+              elf_get_sym_name(elf, sym), base + sym->st_value, alias->name,
+              alias->start_addr, alias->len);
 #endif
 
-        continue;
+      continue;
     }
 
     /* Skip instrumenting/encrypting functions in cases where it simply will
@@ -462,36 +438,35 @@ static int apply_inner_encryption(
       verbose("not encrypting function %s as it's not in .text",
               elf_get_sym_name(elf, sym));
       continue;
-    } else if (sym->st_value == 0 ||
-               sym->st_size < 2) {
-      verbose(
-          "not encrypting function %s due to its address or size",
-          elf_get_sym_name(elf, sym));
+    } else if (sym->st_value == 0 || sym->st_size < 2) {
+      verbose("not encrypting function %s due to its address or size",
+              elf_get_sym_name(elf, sym));
       continue;
     }
 
     /* We need to do this decoding down here as if we don't, sym->st_value
      * could be 0.
      */
-//    uint8_t *func_code_start = elf_get_sym_location(elf, sym);
-//    INSTRUX ix;
-//    NDSTATUS status = NdDecode(&ix, func_code_start, ND_CODE_64, ND_DATA_64);
-//    if (!ND_SUCCESS(status)) {
-//      err("instruction decoding failed at address %p for function %s",
-//          sym->st_value, elf_get_sym_name(elf, sym));
-//      return -1;
-//    }
-//
-//    if (ix.Instruction == ND_INS_JMPNI ||
-//        ix.Instruction == ND_INS_JMPNR ||
-//        ix.Instruction == ND_INS_Jcc ||
-//        ix.Instruction == ND_INS_CALLNI ||
-//        ix.Instruction == ND_INS_CALLNR ||
-//        ix.Instruction == ND_INS_RETN) {
-//      verbose("not encrypting function %s due to first instruction being jmp/ret/call",
-//              elf_get_sym_name(elf, sym));
-//      continue;
-//    }
+    //    uint8_t *func_code_start = elf_get_sym_location(elf, sym);
+    //    INSTRUX ix;
+    //    NDSTATUS status = NdDecode(&ix, func_code_start, ND_CODE_64,
+    //    ND_DATA_64); if (!ND_SUCCESS(status)) {
+    //      err("instruction decoding failed at address %p for function %s",
+    //          sym->st_value, elf_get_sym_name(elf, sym));
+    //      return -1;
+    //    }
+    //
+    //    if (ix.Instruction == ND_INS_JMPNI ||
+    //        ix.Instruction == ND_INS_JMPNR ||
+    //        ix.Instruction == ND_INS_Jcc ||
+    //        ix.Instruction == ND_INS_CALLNI ||
+    //        ix.Instruction == ND_INS_CALLNR ||
+    //        ix.Instruction == ND_INS_RETN) {
+    //      verbose("not encrypting function %s due to first instruction being
+    //      jmp/ret/call",
+    //              elf_get_sym_name(elf, sym));
+    //      continue;
+    //    }
 
     if (process_func(elf, sym, *rt_info, fcn_arr, tp_arr) == -1) {
       err("error instrumenting function %s", elf_get_sym_name(elf, sym));
@@ -501,10 +476,9 @@ static int apply_inner_encryption(
 
   size_t tp_arr_sz = sizeof(struct trap_point) * (*rt_info)->ntraps;
   size_t fcn_arr_sz = sizeof(struct function) * (*rt_info)->nfuncs;
-  CK_NEQ_PERROR(
-      *rt_info = realloc(*rt_info,
-              sizeof(struct runtime_info) + tp_arr_sz + fcn_arr_sz),
-      NULL);
+  CK_NEQ_PERROR(*rt_info = realloc(*rt_info, sizeof(struct runtime_info) +
+                                                 tp_arr_sz + fcn_arr_sz),
+                NULL);
 
   memcpy((*rt_info)->data, tp_arr, tp_arr_sz);
   memcpy((*rt_info)->data + tp_arr_sz, fcn_arr, fcn_arr_sz);
@@ -518,11 +492,8 @@ static int apply_inner_encryption(
 /* Encrypts the input binary as a whole injects the outer key into the loader
  * code so the loader can decrypt.
  */
-static int apply_outer_encryption(
-    struct mapped_elf *elf,
-    void *loader_start,
-    size_t loader_size)
-{
+static int apply_outer_encryption(struct mapped_elf *elf, void *loader_start,
+                                  size_t loader_size) {
   struct rc4_key key;
   CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
   info("applying outer encryption with key %s", STRINGIFY_KEY(key));
@@ -535,17 +506,13 @@ static int apply_outer_encryption(
   obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
 
   /* Copy over obfuscated key so the loader can decrypt */
-  *((struct rc4_key *) loader_start) = obfuscated_key;
+  *((struct rc4_key *)loader_start) = obfuscated_key;
 
   return 0;
 }
 
-static void *inject_rt_info(
-    void *loader,
-    struct runtime_info *rt_info,
-    size_t old_size,
-    size_t *new_size)
-{
+static void *inject_rt_info(void *loader, struct runtime_info *rt_info,
+                            size_t old_size, size_t *new_size) {
   size_t rt_info_size = sizeof(struct runtime_info) +
                         sizeof(struct trap_point) * rt_info->ntraps +
                         sizeof(struct function) * rt_info->nfuncs;
@@ -555,14 +522,13 @@ static void *inject_rt_info(
   *new_size = old_size + rt_info_size;
 
   info("injected runtime info into loader (old size: %u new size: %u)",
-      old_size, *new_size);
-
+       old_size, *new_size);
 
   /* subtract sizeof(struct runtime_info) here to ensure we overwrite the
    * non flexible-array portion of the struct that the linker actually puts in
    * the code. */
-  memcpy(loader_rt_info + old_size - sizeof(struct runtime_info),
-         rt_info, rt_info_size);
+  memcpy(loader_rt_info + old_size - sizeof(struct runtime_info), rt_info,
+         rt_info_size);
 
   return loader_rt_info;
 }
@@ -572,8 +538,7 @@ static void *inject_rt_info(
  * the .symtab section. This strips everything not covered by a segment as
  * described in the program header table to ensure absolutely no debugging
  * information is left over to aid a reverse engineer. */
-static int full_strip(struct mapped_elf *elf)
-{
+static int full_strip(struct mapped_elf *elf) {
   Elf64_Phdr *curr_phdr = elf->phdr_tbl;
   size_t new_size = 0;
   info("stripping input binary");
@@ -604,29 +569,24 @@ static int full_strip(struct mapped_elf *elf)
   return 0;
 }
 
-static void usage()
-{
-  info(
-      "Kiteshield, an obfuscating packer for x86-64 binaries on Linux\n"
-      "Usage: kiteshield [OPTION] INPUT_FILE OUTPUT_FILE\n\n"
-      "  -n       don't apply inner encryption (per-function encryption)\n"
-      "  -v       verbose logging"
-  );
+static void usage() {
+  info("Kiteshield, an obfuscating packer for x86-64 binaries on Linux\n"
+       "Usage: kiteshield [OPTION] INPUT_FILE OUTPUT_FILE\n\n"
+       "  -n       don't apply inner encryption (per-function encryption)\n"
+       "  -v       verbose logging");
 }
 
-static void banner()
-{
-//  info("\n");
+static void banner() {
+  //  info("\n");
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   char *input_path, *output_path;
   int layer_one_only = 0;
   int c;
   int ret;
 
-  while ((c = getopt (argc, argv, "nv")) != -1) {
+  while ((c = getopt(argc, argv, "nv")) != -1) {
     switch (c) {
     case 'n':
       layer_one_only = 1;
@@ -647,7 +607,6 @@ int main(int argc, char *argv[])
     usage();
     return -1;
   }
-
 
   banner();
 
@@ -676,7 +635,7 @@ int main(int argc, char *argv[])
     }
 
     loader = inject_rt_info(GENERATED_LOADER_RT, rt_info,
-        sizeof(GENERATED_LOADER_RT), &loader_size);
+                            sizeof(GENERATED_LOADER_RT), &loader_size);
   } else {
     info("not applying inner encryption and omitting runtime (-n)");
 
@@ -713,4 +672,3 @@ int main(int argc, char *argv[])
   info("output ELF has been written to %s", output_path);
   return 0;
 }
-
