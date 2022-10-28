@@ -248,8 +248,12 @@ pid_t sys_fork()
   pid_t ret = 0;
 
   asm volatile(
+      "mov x0, #0x11\n"
+      "mov x1, #0x0\n"
+      "mov x2, #0x0\n"
+      "mov x3, #0x0\n"
       "stp x29, x30, [sp, -16]!\n"
-      "mov x8, #1071 \n"
+      "mov x8, #220 \n"
       "svc #0 \n"
       "ldp x29, x30, [sp], 16\n"
       "mov %[result], x0"
