@@ -764,6 +764,7 @@ static void handle_thread_exit(struct thread *thread,
 
   int wstatus;
   if (!is_tg_leader) {
+    DEBUG("not tg leader");
     pid_t res = sys_wait4(tid, &wstatus, __WALL);
     DIE_IF_FMT(res < 0, "wait4 syscall failed with error %d", res);
 
@@ -773,6 +774,7 @@ static void handle_thread_exit(struct thread *thread,
 
   /* Wait on thread group leader when its the last thread */
   if (is_last_in_tg) {
+    DEBUG("tg last thread");
     pid_t res = sys_wait4(tgid, &wstatus, __WALL);
     DIE_IF_FMT(res < 0, "wait4 syscall failed with error %d", res);
 
