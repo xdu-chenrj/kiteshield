@@ -665,6 +665,7 @@ retry_child_wait:
  * has_wait_prio flag to preserve strict round-robin ordering between calls.
  */
 pid_t fair_wait_threads(struct thread_list *tlist, int *wstatus) {
+  DEBUG("start fair wait thread");
   DIE_IF(tlist->head == NULL,
          "(runtime bug) attempting to wait on an empty thread list");
 
@@ -706,6 +707,7 @@ pid_t fair_wait_threads(struct thread_list *tlist, int *wstatus) {
 }
 
 void setup_initial_thread(pid_t tid, struct thread_list *tlist) {
+  DEBUG("start setup initial thread");
   /* Set up initial forked child (special case of handle_new_thread) */
   long ret;
   while (1) {
@@ -740,6 +742,7 @@ void setup_initial_thread(pid_t tid, struct thread_list *tlist) {
 
 static void handle_thread_exit(struct thread *thread,
                                struct thread_list *tlist) {
+  DEBUG("start handle thread exit");
   /* Undocumented Linux magic right here.
    *
    * If the thread group leader of a thread group with > 1 thread exits
