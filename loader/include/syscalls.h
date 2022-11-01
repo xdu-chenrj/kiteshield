@@ -42,116 +42,116 @@
 
 /* ptrace syscall constants/defines */
 enum __ptrace_request {
-  PTRACE_TRACEME = 0,
-  PTRACE_PEEKTEXT = 1,
-  PTRACE_PEEKDATA = 2,
-  PTRACE_PEEKUSER = 3,
-  PTRACE_POKETEXT = 4,
-  PTRACE_POKEDATA = 5,
-  PTRACE_POKEUSER = 6,
-  PTRACE_CONT = 7,
-  PTRACE_KILL = 8,
-  PTRACE_SINGLESTEP = 9,
-  PTRACE_GETREGS = 12,
-  PTRACE_SETREGS = 13,
-  PTRACE_GETFPREGS = 14,
-  PTRACE_SETFPREGS = 15,
-  PTRACE_ATTACH = 16,
-  PTRACE_DETACH = 17,
-  PTRACE_GETFPXREGS = 18,
-  PTRACE_SETFPXREGS = 19,
-  PTRACE_SYSCALL = 24,
-  PTRACE_GET_THREAD_AREA = 25,
-  PTRACE_SET_THREAD_AREA = 26,
-  PTRACE_ARCH_PRCTL = 30,
-  PTRACE_SYSEMU = 31,
-  PTRACE_SYSEMU_SINGLESTEP = 32,
-  PTRACE_SINGLEBLOCK = 33,
-  PTRACE_SETOPTIONS = 0x4200,
-  PTRACE_GETEVENTMSG = 0x4201,
-  PTRACE_GETSIGINFO = 0x4202,
-  PTRACE_SETSIGINFO = 0x4203,
-  PTRACE_GETREGSET = 0x4204,
-  PTRACE_SETREGSET = 0x4205,
-  PTRACE_SEIZE = 0x4206,
-  PTRACE_INTERRUPT = 0x4207,
-  PTRACE_LISTEN = 0x4208,
-  PTRACE_PEEKSIGINFO = 0x4209,
-  PTRACE_GETSIGMASK = 0x420a,
-  PTRACE_SETSIGMASK = 0x420b,
-  PTRACE_SECCOMP_GET_FILTER = 0x420c,
-  PTRACE_SECCOMP_GET_METADATA = 0x420c
+    PTRACE_TRACEME = 0,
+    PTRACE_PEEKTEXT = 1,
+    PTRACE_PEEKDATA = 2,
+    PTRACE_PEEKUSER = 3,
+    PTRACE_POKETEXT = 4,
+    PTRACE_POKEDATA = 5,
+    PTRACE_POKEUSER = 6,
+    PTRACE_CONT = 7,
+    PTRACE_KILL = 8,
+    PTRACE_SINGLESTEP = 9,
+    PTRACE_GETREGS = 12,
+    PTRACE_SETREGS = 13,
+    PTRACE_GETFPREGS = 14,
+    PTRACE_SETFPREGS = 15,
+    PTRACE_ATTACH = 16,
+    PTRACE_DETACH = 17,
+    PTRACE_GETFPXREGS = 18,
+    PTRACE_SETFPXREGS = 19,
+    PTRACE_SYSCALL = 24,
+    PTRACE_GET_THREAD_AREA = 25,
+    PTRACE_SET_THREAD_AREA = 26,
+    PTRACE_ARCH_PRCTL = 30,
+    PTRACE_SYSEMU = 31,
+    PTRACE_SYSEMU_SINGLESTEP = 32,
+    PTRACE_SINGLEBLOCK = 33,
+    PTRACE_SETOPTIONS = 0x4200,
+    PTRACE_GETEVENTMSG = 0x4201,
+    PTRACE_GETSIGINFO = 0x4202,
+    PTRACE_SETSIGINFO = 0x4203,
+    PTRACE_GETREGSET = 0x4204,
+    PTRACE_SETREGSET = 0x4205,
+    PTRACE_SEIZE = 0x4206,
+    PTRACE_INTERRUPT = 0x4207,
+    PTRACE_LISTEN = 0x4208,
+    PTRACE_PEEKSIGINFO = 0x4209,
+    PTRACE_GETSIGMASK = 0x420a,
+    PTRACE_SETSIGMASK = 0x420b,
+    PTRACE_SECCOMP_GET_FILTER = 0x420c,
+    PTRACE_SECCOMP_GET_METADATA = 0x420c
 };
 
 enum __ptrace_setoptions {
-  PTRACE_O_TRACESYSGOOD = 0x00000001,
-  PTRACE_O_TRACEFORK = 0x00000002,
-  PTRACE_O_TRACEVFORK = 0x00000004,
-  PTRACE_O_TRACECLONE = 0x00000008,
-  PTRACE_O_TRACEEXEC = 0x00000010,
-  PTRACE_O_TRACEVFORKDONE = 0x00000020,
-  PTRACE_O_TRACEEXIT = 0x00000040,
-  PTRACE_O_TRACESECCOMP = 0x00000080,
-  PTRACE_O_EXITKILL = 0x00100000,
-  PTRACE_O_SUSPEND_SECCOMP = 0x00200000,
-  PTRACE_O_MASK  = 0x003000ff
+    PTRACE_O_TRACESYSGOOD = 0x00000001,
+    PTRACE_O_TRACEFORK = 0x00000002,
+    PTRACE_O_TRACEVFORK = 0x00000004,
+    PTRACE_O_TRACECLONE = 0x00000008,
+    PTRACE_O_TRACEEXEC = 0x00000010,
+    PTRACE_O_TRACEVFORKDONE = 0x00000020,
+    PTRACE_O_TRACEEXIT = 0x00000040,
+    PTRACE_O_TRACESECCOMP = 0x00000080,
+    PTRACE_O_EXITKILL = 0x00100000,
+    PTRACE_O_SUSPEND_SECCOMP = 0x00200000,
+    PTRACE_O_MASK = 0x003000ff
 };
 
 enum __ptrace_eventcodes {
-  PTRACE_EVENT_FORK = 1,
-  PTRACE_EVENT_VFORK = 2,
-  PTRACE_EVENT_CLONE = 3,
-  PTRACE_EVENT_EXEC = 4,
-  PTRACE_EVENT_VFORK_DONE = 5,
-  PTRACE_EVENT_EXIT = 6,
-  PTRACE_EVENT_SECCOMP  = 7,
-  PTRACE_EVENT_STOP = 128
+    PTRACE_EVENT_FORK = 1,
+    PTRACE_EVENT_VFORK = 2,
+    PTRACE_EVENT_CLONE = 3,
+    PTRACE_EVENT_EXEC = 4,
+    PTRACE_EVENT_VFORK_DONE = 5,
+    PTRACE_EVENT_EXIT = 6,
+    PTRACE_EVENT_SECCOMP = 7,
+    PTRACE_EVENT_STOP = 128
 };
 
 struct __ptrace_peeksiginfo_args {
-  uint64_t off;
-  uint32_t flags;
-  int32_t nr;
+    uint64_t off;
+    uint32_t flags;
+    int32_t nr;
 };
 
 enum __ptrace_peeksiginfo_flags {
-  PTRACE_PEEKSIGINFO_SHARED = (1 << 0)
+    PTRACE_PEEKSIGINFO_SHARED = (1 << 0)
 };
 
 struct __ptrace_seccomp_metadata {
-  uint64_t filter_off;
-  uint64_t flags;
+    uint64_t filter_off;
+    uint64_t flags;
 };
 
 /* Defined in kernel headers, needed for PTRACE_GETREGS */
 struct user_regs_struct {
-  unsigned long r15;
-  unsigned long r14;
-  unsigned long r13;
-  unsigned long r12;
-  unsigned long bp;
-  unsigned long bx;
-  unsigned long r11;
-  unsigned long r10;
-  unsigned long r9;
-  unsigned long r8;
-  unsigned long ax;
-  unsigned long cx;
-  unsigned long dx;
-  unsigned long si;
-  unsigned long di;
-  unsigned long orig_ax;
-  unsigned long ip;
-  unsigned long cs;
-  unsigned long flags;
-  unsigned long sp;
-  unsigned long ss;
-  unsigned long fs_base;
-  unsigned long gs_base;
-  unsigned long ds;
-  unsigned long es;
-  unsigned long fs;
-  unsigned long gs;
+    unsigned long r15;
+    unsigned long r14;
+    unsigned long r13;
+    unsigned long r12;
+    unsigned long bp;
+    unsigned long bx;
+    unsigned long r11;
+    unsigned long r10;
+    unsigned long r9;
+    unsigned long r8;
+    unsigned long ax;
+    unsigned long cx;
+    unsigned long dx;
+    unsigned long si;
+    unsigned long di;
+    unsigned long orig_ax;
+    unsigned long ip;
+    unsigned long cs;
+    unsigned long flags;
+    unsigned long sp;
+    unsigned long ss;
+    unsigned long fs_base;
+    unsigned long gs_base;
+    unsigned long ds;
+    unsigned long es;
+    unsigned long fs;
+    unsigned long gs;
 };
 
 /* wait4 syscall constants/defines */
@@ -166,37 +166,40 @@ struct user_regs_struct {
 # define WIFCONTINUED(status) ((status) == W_CONTINUED)
 #endif
 
-#define WNOHANG		0x00000001
-#define WUNTRACED	0x00000002
-#define WSTOPPED	WUNTRACED
-#define WEXITED		0x00000004
-#define WCONTINUED	0x00000008
-#define WNOWAIT		0x01000000
+#define WNOHANG    0x00000001
+#define WUNTRACED  0x00000002
+#define WSTOPPED  WUNTRACED
+#define WEXITED    0x00000004
+#define WCONTINUED  0x00000008
+#define WNOWAIT    0x01000000
 
-#define __WNOTHREAD	0x20000000
-#define __WALL		0x40000000
-#define __WCLONE	0x80000000
+#define __WNOTHREAD  0x20000000
+#define __WALL    0x40000000
+#define __WCLONE  0x80000000
 
 /* rt_sigaction syscall constants/defines */
 struct kernel_sigaction {
-  void (*sa_handler)(int);
-  unsigned long sa_flags;
-  void (*sa_restorer)(void);
-  unsigned long sa_mask;
+    void (*sa_handler)(int);
+
+    unsigned long sa_flags;
+
+    void (*sa_restorer)(void);
+
+    unsigned long sa_mask;
 };
 
-#define SA_NOCLDSTOP	0x00000001u
-#define SA_NOCLDWAIT	0x00000002u
-#define SA_SIGINFO	0x00000004u
-#define SA_ONSTACK	0x08000000u
-#define SA_RESTART	0x10000000u
-#define SA_NODEFER	0x40000000u
-#define SA_RESETHAND	0x80000000u
+#define SA_NOCLDSTOP  0x00000001u
+#define SA_NOCLDWAIT  0x00000002u
+#define SA_SIGINFO  0x00000004u
+#define SA_ONSTACK  0x08000000u
+#define SA_RESTART  0x10000000u
+#define SA_NODEFER  0x40000000u
+#define SA_RESETHAND  0x80000000u
 
-#define SA_NOMASK	SA_NODEFER
-#define SA_ONESHOT	SA_RESETHAND
+#define SA_NOMASK  SA_NODEFER
+#define SA_ONESHOT  SA_RESETHAND
 
-#define SA_RESTORER	0x04000000
+#define SA_RESTORER  0x04000000
 
 /* prctl constants/defines */
 #define PR_GET_DUMPABLE   3
@@ -204,62 +207,62 @@ struct kernel_sigaction {
 
 /* stat constants/defines */
 struct stat {
-	unsigned long long	st_dev;
-	unsigned char	__pad0[4];
+    unsigned long long st_dev;
+    unsigned char __pad0[4];
 
-	unsigned long	__st_ino;
+    unsigned long __st_ino;
 
-	unsigned int	st_mode;
-	unsigned int	st_nlink;
+    unsigned int st_mode;
+    unsigned int st_nlink;
 
-	unsigned long	st_uid;
-	unsigned long	st_gid;
+    unsigned long st_uid;
+    unsigned long st_gid;
 
-	unsigned long long	st_rdev;
-	unsigned char	__pad3[4];
+    unsigned long long st_rdev;
+    unsigned char __pad3[4];
 
-	long long	st_size;
-	unsigned long	st_blksize;
+    long long st_size;
+    unsigned long st_blksize;
 
-	unsigned long long	st_blocks;
+    unsigned long long st_blocks;
 
-	unsigned long	st_atime;
-	unsigned long	st_atime_nsec;
+    unsigned long st_atime;
+    unsigned long st_atime_nsec;
 
-	unsigned long	st_mtime;
-	unsigned int	st_mtime_nsec;
+    unsigned long st_mtime;
+    unsigned int st_mtime_nsec;
 
-	unsigned long	st_ctime;
-	unsigned long	st_ctime_nsec;
+    unsigned long st_ctime;
+    unsigned long st_ctime_nsec;
 
-	unsigned long long	st_ino;
+    unsigned long long st_ino;
 };
 
 /* setrlimit constants/defines */
 typedef unsigned long rlim_t;
 struct rlimit {
-  rlim_t rlim_cur;
-  rlim_t rlim_max;
+    rlim_t rlim_cur;
+    rlim_t rlim_max;
 };
 
 /* Kinds of resource limit.  */
 enum rlimit_resource {
-  RLIMIT_CPU = 0,
-  RLIMIT_FSIZE = 1,
-  RLIMIT_DATA = 2,
-  RLIMIT_STACK = 3,
-  RLIMIT_CORE = 4,
-  RLIMIT_RSS = 5,
-  RLIMIT_NOFILE = 7,
-  RLIMIT_AS = 9,
-  RLIMIT_NPROC = 6,
-  RLIMIT_MEMLOCK = 8,
-  RLIMIT_LOCKS = 10,
-  RLIMIT_SIGPENDING = 11,
-  RLIMIT_MSGQUEUE = 12,
-  RLIMIT_NICE = 13,
-  RLIMIT_RTPRIO = 14,
-  RLIMIT_RTTIME = 15,
+    RLIMIT_CPU = 0,
+    RLIMIT_FSIZE = 1,
+    RLIMIT_DATA = 2,
+    RLIMIT_STACK = 3,
+    RLIMIT_CORE = 4,
+    RLIMIT_RSS = 5,
+    RLIMIT_NOFILE = 7,
+    RLIMIT_AS = 9,
+    RLIMIT_NPROC = 6,
+    RLIMIT_MEMLOCK = 8,
+    RLIMIT_LOCKS = 10,
+    RLIMIT_SIGPENDING = 11,
+    RLIMIT_MSGQUEUE = 12,
+    RLIMIT_NICE = 13,
+    RLIMIT_RTPRIO = 14,
+    RLIMIT_RTTIME = 15,
 };
 
 /* clone constants/defines */
@@ -290,93 +293,93 @@ enum rlimit_resource {
 
 /* syscall wrapper prototypes */
 ssize_t sys_write(
-    int fd,
-    const char *s,
-    size_t count);
+        int fd,
+        const char *s,
+        size_t count);
 
 ssize_t sys_read(
-    int fd,
-    void *buf,
-    size_t count);
+        int fd,
+        void *buf,
+        size_t count);
 
 off_t sys_lseek(
-    int fd,
-    off_t offset,
-    int whence);
+        int fd,
+        off_t offset,
+        int whence);
 
 int sys_open(
-    const char *pathname,
-    int flags,
-    int mode);
+        const char *pathname,
+        int flags,
+        int mode);
 
 int sys_close(
-    int fd);
+        int fd);
 
 void sys_exit(
-    int status) __attribute__((noreturn));
+        int status) __attribute__((noreturn));
 
 void *sys_mmap(
-    void *addr,
-    size_t length,
-    int prot,
-    int flags,
-    int fd,
-    off_t offset);
+        void *addr,
+        size_t length,
+        int prot,
+        int flags,
+        int fd,
+        off_t offset);
 
 int sys_munmap(
-    void *addr,
-    size_t length);
+        void *addr,
+        size_t length);
 
 int sys_mprotect(
-    void *addr,
-    size_t len,
-    int prot);
+        void *addr,
+        size_t len,
+        int prot);
 
 long sys_ptrace(
-    enum __ptrace_request,
-    pid_t pid,
-    void *addr,
-    void *data);
+        enum __ptrace_request,
+        pid_t pid,
+        void *addr,
+        void *data);
 
 pid_t sys_wait4(
-    pid_t pid,
-    int *wstatus,
-    int options);
+        pid_t pid,
+        int *wstatus,
+        int options);
 
 pid_t sys_fork();
 
 int sys_kill(
-    pid_t pid,
-    int sig);
+        pid_t pid,
+        int sig);
 
 int sys_tgkill(
-    pid_t tgid,
-    pid_t tid,
-    int sig);
+        pid_t tgid,
+        pid_t tid,
+        int sig);
 
 pid_t sys_getpid();
 
 int sys_rt_sigaction(
-    int sig,
-    const struct kernel_sigaction *act,
-    const struct kernel_sigaction *oact);
+        int sig,
+        const struct kernel_sigaction *act,
+        const struct kernel_sigaction *oact);
 
 int sys_prctl(
-    int option,
-    unsigned long arg2,
-    unsigned long arg3,
-    unsigned long arg4,
-    unsigned long arg5);
+        int option,
+        unsigned long arg2,
+        unsigned long arg3,
+        unsigned long arg4,
+        unsigned long arg5);
 
 int sys_stat(
-    const char *pathname,
-    struct stat *statbuf);
+        const char *pathname,
+        struct stat *statbuf);
 
 int sys_setrlimit(
-    int resource,
-    struct rlimit *rlim);
+        int resource,
+        struct rlimit *rlim);
 
-void* malloc(size_t size);
+void *malloc(size_t size);
 
 #endif /* __KITESHIELD_SYSCALLS_H */
 

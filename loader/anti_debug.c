@@ -4,10 +4,9 @@
 
 int sigtrap_counter = 0;
 
-void sigtrap_handler(int sig)
-{
-  DEBUG("caught SIGTRAP, incrementing SIGTRAP count (antidebug)");
-  sigtrap_counter++;
+void sigtrap_handler(int sig) {
+    DEBUG("caught SIGTRAP, incrementing SIGTRAP count (antidebug)");
+    sigtrap_counter++;
 }
 
 /* Simple signal restorer that simply calls sigreturn(2). Normally this is
@@ -16,24 +15,24 @@ void sigtrap_handler(int sig)
  */
 //assembly
 void restorer();
+
 asm ("restorer:\n"
      "  mov $15, %rax\n"
      "  syscall");
 
-void antidebug_signal_init()
-{
+void antidebug_signal_init() {
 #ifdef NO_ANTIDEBUG
-  return;
+    return;
 #endif
 
-  struct kernel_sigaction sa;
-  sa.sa_mask = ~0UL;
-  sa.sa_handler = sigtrap_handler;
-  sa.sa_flags = SA_RESTORER;
-  sa.sa_restorer = &restorer;
+    struct kernel_sigaction sa;
+    sa.sa_mask = ~0UL;
+    sa.sa_handler = sigtrap_handler;
+    sa.sa_flags = SA_RESTORER;
+    sa.sa_restorer = &restorer;
 
-  int res = sys_rt_sigaction(SIGTRAP, &sa, NULL);
-  DIE_IF_FMT(res < 0, "rt_sigaction failed with errro %d", res);
+    int res = sys_rt_sigaction(SIGTRAP, &sa, NULL);
+    DIE_IF_FMT(res < 0, "rt_sigaction failed with errro %d", res);
 }
 
 /* Sets the process's dumpable flag to 0. This makes ptrace attaches impossible
@@ -45,14 +44,13 @@ void antidebug_signal_init()
  * one more thing a reverse engineer has to get around, which makes it a
  * positive.
  */
-void antidebug_prctl_set_nondumpable()
-{
+void antidebug_prctl_set_nondumpable() {
 #ifdef NO_ANTIDEBUG
-  return;
+    return;
 #endif
 
-  int ret = sys_prctl(PR_SET_DUMPABLE, 0, 0, 0, 0);
-  DIE_IF_FMT(ret != 0, "prctl(PR_SET_DUMPABLE, 0) failed with %d", ret);
+    int ret = sys_prctl(PR_SET_DUMPABLE, 0, 0, 0, 0);
+    DIE_IF_FMT(ret != 0, "prctl(PR_SET_DUMPABLE, 0) failed with %d", ret);
 }
 
 /* Sets the environment variables LD_PRELOAD, LD_AUDIT and LD_DEBUG (if
@@ -62,32 +60,31 @@ void antidebug_prctl_set_nondumpable()
  * in dynamically linked packed program's context, the last can be set to to
  * provide potentially useful information on linker operations.
  */
-void antidebug_remove_ld_env_vars(void *entry_stacktop)
-{
+void antidebug_remove_ld_env_vars(void *entry_stacktop) {
 #ifdef NO_ANTIDEBUG
-  return;
+    return;
 #endif
 
-  char **environ = entry_stacktop;
+    char **environ = entry_stacktop;
 
-  /* Advance past argc */
-  environ++;
+    /* Advance past argc */
+    environ++;
 
-  /* Advance past argv */
-  while (*(++environ) != 0);
-  environ++;
+    /* Advance past argv */
+    while (*(++environ) != 0);
+    environ++;
 
-  for (char **v = environ; *v != NULL; v++) {
-    if (strncmp(*v, DEOBF_STR(LD_PRELOAD), 9) == 0) {
-      DEBUG_FMT("LD_PRELOAD is set to %s, removing", *v + 11);
-      (*v)[11] = '\0';
-    } else if (strncmp(*v, DEOBF_STR(LD_AUDIT), 7) == 0) {
-      DEBUG_FMT("LD_AUDIT is set to %s, removing", *v + 9);
-      (*v)[9] = '\0';
-    } else if (strncmp(*v, DEOBF_STR(LD_DEBUG), 7) == 0) {
-      DEBUG_FMT("LD_DEBUG is set to %s, removing", *v + 9);
-      (*v)[9] = '\0';
+    for (char **v = environ; *v != NULL; v++) {
+        if (strncmp(*v, DEOBF_STR(LD_PRELOAD), 9) == 0) {
+            DEBUG_FMT("LD_PRELOAD is set to %s, removing", *v + 11);
+            (*v)[11] = '\0';
+        } else if (strncmp(*v, DEOBF_STR(LD_AUDIT), 7) == 0) {
+            DEBUG_FMT("LD_AUDIT is set to %s, removing", *v + 9);
+            (*v)[9] = '\0';
+        } else if (strncmp(*v, DEOBF_STR(LD_DEBUG), 7) == 0) {
+            DEBUG_FMT("LD_DEBUG is set to %s, removing", *v + 9);
+            (*v)[9] = '\0';
+        }
     }
-  }
 }
 

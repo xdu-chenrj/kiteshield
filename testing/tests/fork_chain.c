@@ -4,19 +4,18 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-int main()
-{
-  int i;
-  for (i = 0; i < 50; i++) {
-    pid_t p = fork();
+int main() {
+    int i;
+    for (i = 0; i < 50; i++) {
+        pid_t p = fork();
 
-    if (p == 0) {
-      printf("in child, i=%d\n", i);
-      fflush(stdout);
-    } else {
-      exit(0);
+        if (p == 0) {
+            printf("in child, i=%d\n", i);
+            fflush(stdout);
+        } else {
+            exit(0);
+        }
     }
-  }
-
-  return 0;
+    
+    return 0;
 }
