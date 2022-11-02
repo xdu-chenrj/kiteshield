@@ -122,6 +122,10 @@ struct __ptrace_seccomp_metadata {
 
 /* Defined in kernel headers, needed for PTRACE_GETREGS */
 struct user_regs_struct {
+    uint64_t regs[31];
+    uint64_t sp;
+    uint64_t pc;
+
   unsigned long r15;
   unsigned long r14;
   unsigned long r13;

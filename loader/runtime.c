@@ -50,8 +50,8 @@ struct runtime_info rt_info __attribute__((section(".rt_info")));
 
 /* Allocated once per tg to store information common to a thread group. */
 struct thread_group {
-  pid_t tgid;
-  int refcnt;
+    pid_t tgid;
+    int refcnt;
 };
 
 /* Function encryption data needs to be maintained per address space and not
@@ -97,7 +97,10 @@ struct thread_list {
   size_t size;
   struct thread *head;
 };
-
+struct iov{
+    struct user_regs_struct * regs;
+    unsigned long int base;
+};
 struct trap_point *get_tp(uint64_t addr) {
   struct trap_point *arr = (struct trap_point *)rt_info.data;
   for (int i = 0; i < rt_info.ntraps; i++) {
@@ -120,17 +123,22 @@ static struct function *get_fcn_at_addr(uint64_t addr) {
 
   return NULL;
 }
-
-static void set_byte_at_addr(pid_t tid, uint64_t addr, uint8_t value) {
+static void set_byte_at_addr(pid_t tid, uint64_t addr, uint64_t value) {
   long word;
   long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
   DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
 
-  word &= (~0) << 8;
-  word |= value;
-
-  res = sys_ptrace(PTRACE_POKETEXT, tid, (void *)addr, (void *)word);
+  res = sys_ptrace(PTRACE_POKETEXT, tid, (void *)addr, (void *)value);
   DIE_IF_FMT(res < 0, "PTRACE_POKETEXT failed with error %d", res);
+}
+static void set_int3_at_addr(pid_t tid, uint64_t addr) {
+  long word;
+  long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
+  DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
+
+  word &= (~0) << 4;
+  word |= INT3;
+  set_byte_at_addr(tid, addr, word);
 }
 
 static void single_step(pid_t tid) {
@@ -174,12 +182,10 @@ static void rc4_xor_fcn(pid_t tid, struct function *fcn) {
     long word;
     long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)curr_addr, &word);
     DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
-
     int to_write = remaining > 8 ? 8 : remaining;
     for (int i = 0; i < to_write; i++) {
       word ^= ((long)rc4_get_byte(&rc4)) << (i * 8);
     }
-
     res = sys_ptrace(PTRACE_POKETEXT, tid, curr_addr, (void *)word);
     DIE_IF_FMT(res < 0, "PTRACE_POKETEXT failed with error %d", res);
 
@@ -285,7 +291,7 @@ static void handle_fcn_entry(struct thread *thread, struct trap_point *tp) {
 
   set_byte_at_addr(thread->tid, tp->addr, tp->value);
   single_step(thread->tid);
-  set_byte_at_addr(thread->tid, tp->addr, INT3);
+  set_int3_at_addr(thread->tid, tp->addr);
 
   FCN_ENTER(thread, fcn);
 }
@@ -296,15 +302,18 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
 
   set_byte_at_addr(thread->tid, tp->addr, tp->value);
   single_step(thread->tid);
-  set_byte_at_addr(thread->tid, tp->addr, INT3);
+  set_int3_at_addr(thread->tid, tp->addr);
 
   /* We've now executed the ret or jmp instruction and are in the (potentially)
    * new function. Figure out what it is. */
   struct user_regs_struct regs;
-  long res = sys_ptrace(PTRACE_GETREGS, thread->tid, NULL, &regs);
+  struct iov iov;
+  iov.regs = &regs;
+  iov.base = sizeof(struct user_regs_struct);
+  long res = sys_ptrace(PTRACE_GETREGSET, thread->tid,(void *) 1, &iov);
   DIE_IF_FMT(res < 0, "PTRACE_GETREGS failed with error %d", res);
   struct function *prev_fcn = FCN_FROM_TP(tp);
-  struct function *new_fcn = get_fcn_at_addr(regs.ip);
+  struct function *new_fcn = get_fcn_at_addr(iov.regs->pc);
 
   if (new_fcn != NULL && new_fcn != prev_fcn) {
     /* We've left the function we were previously in for a new one that we
@@ -322,7 +331,7 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
                 thread->tid, prev_fcn->name, STRINGIFY_KEY(&new_fcn->key));
 
       rc4_xor_fcn(thread->tid, prev_fcn);
-      set_byte_at_addr(thread->tid, prev_fcn->start_addr, INT3);
+      set_int3_at_addr(thread->tid, prev_fcn->start_addr);
     }
 
     /* If this is a jump to the start instruction of a function, do not execute
@@ -334,17 +343,17 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
      *
      * This avoids a double encryption/decryption.
      */
-    if (tp->type == TP_JMP && new_fcn->start_addr != regs.ip) {
+    if (tp->type == TP_JMP && new_fcn->start_addr != iov.regs->pc) {
       DEBUG_FMT("tid %d: function %s is being entered via jmp at non start "
                 "address %p",
-                thread->tid, new_fcn->name, regs.ip);
+                thread->tid, new_fcn->name, iov.regs->pc);
       if (FCN_REFCNT(thread, new_fcn) == 0) {
         DEBUG_FMT("tid %d: function %s being entered is encrypted, decrypting "
                   "with key %s",
                   thread->tid, new_fcn->name, STRINGIFY_KEY(&new_fcn->key));
 
         rc4_xor_fcn(thread->tid, new_fcn);
-        set_byte_at_addr(thread->tid, new_fcn->start_addr, INT3);
+        set_int3_at_addr(thread->tid, new_fcn->start_addr);
       }
 
       FCN_ENTER(thread, new_fcn);
@@ -354,7 +363,7 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
      * don't have a record of. */
     DEBUG_FMT("tid %d: leaving function %s for address %p (no function record) "
               "via %s at %p",
-              thread->tid, prev_fcn->name, regs.ip,
+              thread->tid, prev_fcn->name, iov.regs->pc,
               tp->type == TP_JMP ? "jmp" : "ret", tp->addr);
 
     FCN_EXIT(thread, prev_fcn);
@@ -363,14 +372,14 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
      * executing in it */
     if (FCN_REFCNT(thread, prev_fcn) == 0) {
       rc4_xor_fcn(thread->tid, prev_fcn);
-      set_byte_at_addr(thread->tid, prev_fcn->start_addr, INT3);
+      set_int3_at_addr(thread->tid, prev_fcn->start_addr);
     }
   } else {
     /* We've executed an instrumented jmp or ret but remained in the same
      * function */
     DEBUG_FMT("tid %d: hit trap point in %s at %p, but did not leave function "
               "(now at %p) (%s)",
-              thread->tid, prev_fcn->name, tp->addr, regs.ip,
+              thread->tid, prev_fcn->name, tp->addr, iov.regs->pc,
               tp->type == TP_JMP ? "internal jmp" : "recursive return");
 
     /* Decrement the refcnt on a recursive return but not an internal jump */
@@ -390,21 +399,23 @@ static void handle_trap(struct thread *thread, struct thread_list *tlist,
   /* Stop all threads in the same address space. Must be done as to not
    * encounter concurrency issues. */
   stop_threads_in_same_as(thread, tlist);
-
-  res = sys_ptrace(PTRACE_GETREGS, thread->tid, NULL, &regs);
+  struct iov iov;
+  iov.regs = &regs;
+  iov.base = sizeof(struct user_regs_struct);
+  res = sys_ptrace(PTRACE_GETREGSET, thread->tid,(void *) 1, &iov);
   DIE_IF_FMT(res < 0, "PTRACE_GETREGS failed with error %d", res);
 
   /* Back up the instruction pointer to the start of the int3 in preparation
    * for executing the original instruction */
-  regs.ip--;
+  //regs.pc--;
 
-  struct trap_point *tp = get_tp(regs.ip);
+  struct trap_point *tp = get_tp(iov.regs->pc);
   if (!tp) {
     DIE_FMT("tid %d: trapped at %p but we don't have an entry", thread->tid,
-            regs.ip);
+            iov.regs->pc);
   }
 
-  res = sys_ptrace(PTRACE_SETREGS, thread->tid, NULL, &regs);
+  res = sys_ptrace(PTRACE_SETREGSET, thread->tid, (void *)1, &iov);
   DIE_IF_FMT(res < 0, "PTRACE_SETREGS failed with error %d", res);
 
   if (tp->type == TP_FCN_ENTRY) {
@@ -457,7 +468,7 @@ void destroy_thread(struct thread_list *list, struct thread *thread) {
       FCN_DEC_REF(thread, curr_bt->fcn);
       if (FCN_REFCNT(thread, curr_bt->fcn) == 0) {
         rc4_xor_fcn(thread->tid, curr_bt->fcn);
-        set_byte_at_addr(thread->tid, curr_bt->fcn->start_addr, INT3);
+        set_int3_at_addr(thread->tid, curr_bt->fcn->start_addr);
       }
       curr_bt = curr_bt->next;
     }
@@ -554,9 +565,12 @@ static void handle_new_thread(pid_t tid, struct thread *orig_thread,
 
   /* Determine if new address space or not */
   struct user_regs_struct regs;
-  ret = sys_ptrace(PTRACE_GETREGS, tid, NULL, &regs);
+  struct iov iov;
+  iov.regs = &regs;
+  iov.base = sizeof(struct user_regs_struct);
+  ret = sys_ptrace(PTRACE_GETREGSET, new_thread->tid,(void *) 1, &iov);
   DIE_IF_FMT(ret < 0, "PTRACE_GETREGS failed with error %d", ret);
-  int has_clone_vm = regs.di & CLONE_VM;
+  int has_clone_vm = iov.regs->regs[2] & CLONE_VM;
 
   if ((PTRACE_EVENT_PRESENT(wstatus, PTRACE_EVENT_VFORK)) ||
       ((PTRACE_EVENT_PRESENT(wstatus, PTRACE_EVENT_CLONE)) && has_clone_vm)) {
@@ -567,7 +581,7 @@ static void handle_new_thread(pid_t tid, struct thread *orig_thread,
     new_thread->as = new_address_space(orig_thread->as);
   }
 
-  int has_clone_thread = regs.di & CLONE_THREAD;
+  int has_clone_thread = iov.regs->regs[2] & CLONE_THREAD;
   if (PTRACE_EVENT_PRESENT(wstatus, PTRACE_EVENT_CLONE) && has_clone_thread) {
     new_thread->tg = orig_thread->tg;
     new_thread->tg->refcnt++;
@@ -600,7 +614,7 @@ static void handle_new_thread(pid_t tid, struct thread *orig_thread,
    * handling all such funky cases and assuming the glibc behaviour should
    * cover 99.99% of cases involving clone(2).
    */
-  void *child_stack = (void *)regs.si;
+  void *child_stack = (void *)iov.regs->sp;
   if (((PTRACE_EVENT_PRESENT(wstatus, PTRACE_EVENT_CLONE)) &&
        child_stack != NULL)) {
     DEBUG_FMT("tid %d: new thread has a new stack, removing backtrace", tid);
@@ -904,7 +918,6 @@ void runtime_start(pid_t child_pid) {
 
 void do_fork() {
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
-
   pid_t pid = sys_fork();
   DIE_IF_FMT(pid < 0, "fork failed with error %d", pid);
 
