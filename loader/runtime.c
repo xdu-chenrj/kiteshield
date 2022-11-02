@@ -917,7 +917,7 @@ void runtime_start(pid_t child_pid) {
 }
 
 void do_fork() {
-    if (sys_open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+    if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
         DEBUG("/dev/ttyUSB0 open faild");
         sys_exit(0);
     }
@@ -935,7 +935,7 @@ void do_fork() {
 }
 
 void child_start_ptrace() {
-    if (sys_open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+    if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
         DEBUG("/dev/ttyUSB0 open faild");
         sys_exit(0);
     }

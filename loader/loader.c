@@ -303,7 +303,7 @@ int serial_communication() {
     termios_t *ter_s = malloc(sizeof(ter_s));
     char* dev = "/dev/ttyUSB0";
     //不成为控制终端程序，不受其他程序输出输出影响
-    serportfd = sys_open(dev, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+    serportfd = sys_open(-100, dev, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
     DEBUG_FMT("The result of opening the serial port device: %d", serportfd);
     if (serportfd < 0) {
         DEBUG_FMT("%s open faild", dev);
@@ -415,7 +415,7 @@ void loader_outer_key_deobfuscate(struct rc4_key *old_key,
 
 /* Load the packed binary, returns the address to hand control to when done */
 void *load(void *entry_stacktop) {
-  if (sys_open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+  if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
     DEBUG("/dev/ttyUSB0 open faild");
     sys_exit(0);
   }
