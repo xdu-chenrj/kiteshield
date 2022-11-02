@@ -281,12 +281,11 @@ void serrecv(ser_Data rec) {
         if (ret > 0) {
             DEBUG_FMT("recv success."
                       "recv size is %d\n, data is", ret);
-            for (int i = 0; i < ret ; ++i) ks_printf(1, buf[i]);
+            for (int i = 0; i < ret; ++i) ks_printf(1, buf[i]);
             ks_printf(1, "\n");
 
-            for (int i = 0; i < ret; i++) {
-                res[index++] = buf[i];
-            }
+            for (int i = 0; i < ret; ++i) res[index++] = buf[i];
+
             memset(buf, '0', ret);
         }
         if (index == 134) {
