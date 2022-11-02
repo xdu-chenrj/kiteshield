@@ -391,6 +391,4 @@ int sys_stat(int dirfd, const char *pathname, int flags, unsigned int mask,
 
 int sys_setrlimit(int resource, struct rlimit *rlim);
 
-void *malloc(size_t size);
-
 #endif /* __KITESHIELD_SYSCALLS_H */
