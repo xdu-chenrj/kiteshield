@@ -917,10 +917,11 @@ void runtime_start(pid_t child_pid) {
 }
 
 void do_fork() {
-    if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-        DEBUG("/dev/ttyUSB0 open faild");
-        sys_exit(0);
-    }
+  char *device = "/dev/ttyUSB0";
+  if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+      DEBUG_FMT("%s open faild", device);
+      sys_exit(0);
+  }
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
   pid_t pid = sys_fork();
   DIE_IF_FMT(pid < 0, "fork failed with error %d", pid);

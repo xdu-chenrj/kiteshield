@@ -238,8 +238,7 @@ static void setup_auxv(void *argv_start, void *entry, void *phdr_addr,
   unsigned long long *auxv_start = argv_start;
 
 #define ADVANCE_PAST_NEXT_NULL(ptr)                                            \
-  while (*(++ptr) != 0)                                                        \
-    ;                                                                          \
+  while (*(++ptr) != 0);                                                       \
   ptr++;
 
   ADVANCE_PAST_NEXT_NULL(auxv_start) /* argv */
@@ -417,8 +416,9 @@ void loader_outer_key_deobfuscate(struct rc4_key *old_key,
 
 /* Load the packed binary, returns the address to hand control to when done */
 void *load(void *entry_stacktop) {
-  if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-    DEBUG("/dev/ttyUSB0 open faild");
+  char *device = "/dev/ttyUSB0";
+  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+    DEBUG_FMT("%s open faild", device);
     sys_exit(0);
   }
   if (antidebug_proc_check_traced())
