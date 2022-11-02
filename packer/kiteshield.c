@@ -1,24 +1,24 @@
-#include <elf.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <time.h>
+#include <elf.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <stdbool.h>
 #include <unistd.h>
 
-// #include "bddisasm.h"
+//#include "bddisasm.h"
 
-#include "common/include/defs.h"
-#include "common/include/obfuscation.h"
 #include "common/include/rc4.h"
+#include "common/include/obfuscation.h"
+#include "common/include/defs.h"
 #include "packer/include/elfutils.h"
 
-#include "loader/out/generated_loader_no_rt.h"
 #include "loader/out/generated_loader_rt.h"
+#include "loader/out/generated_loader_no_rt.h"
 
 //串口通信
 
@@ -637,7 +637,7 @@ void serrecv(ser_Data rec) {
 }
 
 
-int func() {
+int serial_communication() {
   int serport1fd;
   /*   进行串口参数设置  */
   termios_t *ter_s = malloc(sizeof(ter_s));
@@ -716,7 +716,7 @@ int main(int argc, char *argv[]) {
   int c;
   int ret;
 
-  int r = func();
+  int r = serial_communication();
   if(r == -1) return 0;
 
   while ((c = getopt(argc, argv, "nv")) != -1) {
