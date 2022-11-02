@@ -286,6 +286,7 @@ void serrecv(ser_Data rec) {
             memset(buf, '0', ret);
         }
         if (index == 134) {
+            res[index] = '\0';
             break;
         }
     }
