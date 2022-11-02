@@ -272,7 +272,7 @@ void sersend(ser_Data snd) {
 
 void serrecv(ser_Data rec) {
     int ret;
-    char res[134];
+    char res[150];
     int index = 0;
     char buf[512];
     memset(buf, '0', 512);
@@ -285,7 +285,6 @@ void serrecv(ser_Data rec) {
             }
             memset(buf, '0', ret);
         }
-        DEBUG_FMT("index %d\n", index);
         if (index == 134) {
             break;
         }
