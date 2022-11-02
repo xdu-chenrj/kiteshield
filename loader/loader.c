@@ -238,8 +238,7 @@ static void setup_auxv(void *argv_start, void *entry, void *phdr_addr,
   unsigned long long *auxv_start = argv_start;
 
 #define ADVANCE_PAST_NEXT_NULL(ptr)                                            \
-  while (*(++ptr) != 0)                                                        \
-    ;                                                                          \
+  while (*(++ptr) != 0);                                                       \
   ptr++;
 
   ADVANCE_PAST_NEXT_NULL(auxv_start) /* argv */
