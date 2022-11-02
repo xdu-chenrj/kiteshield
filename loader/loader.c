@@ -283,6 +283,7 @@ void serrecv(ser_Data rec) {
                 res[index++] = buf[i];
             }
         }
+        DEBUG_FMT("index %d\n", index);
         if (index == 134) {
             break;
         }
