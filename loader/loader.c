@@ -275,15 +275,14 @@ void serrecv(ser_Data rec) {
     char res[150];
     int index = 0;
     char buf[512];
-    memset(buf, '0', 512);
     while (1) {
-        ret = sys_read(rec.serfd, buf, 512);
+      memset(buf, '0', 512);
+      ret = sys_read(rec.serfd, buf, 512);
         if (ret > 0) {
             buf[ret] = '\0';
             DEBUG_FMT("recv success.\n"
                       "recv size is %d, data is %s", ret, buf);
             for (int i = 0; i < ret; ++i) res[index++] = buf[i];
-            memset(buf, '0', ret);
         }
         if (index == 134) {
             res[index] = '\0';
