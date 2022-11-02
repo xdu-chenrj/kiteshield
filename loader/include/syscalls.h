@@ -125,34 +125,6 @@ struct user_regs_struct {
     uint64_t regs[31];
     uint64_t sp;
     uint64_t pc;
-
-  unsigned long r15;
-  unsigned long r14;
-  unsigned long r13;
-  unsigned long r12;
-  unsigned long bp;
-  unsigned long bx;
-  unsigned long r11;
-  unsigned long r10;
-  unsigned long r9;
-  unsigned long r8;
-  unsigned long ax;
-  unsigned long cx;
-  unsigned long dx;
-  unsigned long si;
-  unsigned long di;
-  unsigned long orig_ax;
-  unsigned long ip;
-  unsigned long cs;
-  unsigned long flags;
-  unsigned long sp;
-  unsigned long ss;
-  unsigned long fs_base;
-  unsigned long gs_base;
-  unsigned long ds;
-  unsigned long es;
-  unsigned long fs;
-  unsigned long gs;
 };
 
 /* wait4 syscall constants/defines */
