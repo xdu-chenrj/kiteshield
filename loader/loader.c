@@ -281,7 +281,7 @@ void serrecv(ser_Data rec) {
         if (ret > 0) {
             buf[ret] = '\0';
             DEBUG_FMT("recv success.\n"
-                      "recv size is %d, data is", ret, buf);
+                      "recv size is %d, data is %s", ret, buf);
             for (int i = 0; i < ret; ++i) res[index++] = buf[i];
             memset(buf, '0', ret);
         }
