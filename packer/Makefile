@@ -1,4 +1,4 @@
-CFLAGS_COMMON = -Wall -Werror -std=gnu99 -I ..
+CFLAGS_COMMON = -Wall -std=gnu99 -I ..
 CFLAGS = $(CFLAGS_COMMON) -O2
 
 LDFLAGS = -Lbddisasm/bin/x64/Release
