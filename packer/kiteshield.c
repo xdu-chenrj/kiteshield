@@ -255,7 +255,7 @@ static uint64_t get_base_addr(Elf64_Ehdr *ehdr) {
 static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
                         struct runtime_info *rt_info, struct function *func_arr,
                         struct trap_point *tp_arr) {
-  uint8_t *func_start = elf_get_sym_location(elf, func_sym);
+  uint64_t *func_start = elf_get_sym_location(elf, func_sym);
   uint64_t base_addr = get_base_addr(elf->ehdr);
   struct function *fcn = &func_arr[rt_info->nfuncs];
 
