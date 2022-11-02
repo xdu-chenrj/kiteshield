@@ -10,6 +10,7 @@
 #include "loader/include/syscalls.h"
 #include "loader/include/types.h"
 #include "loader/include/termios-struct.h"
+#include "loader/include/malloc.h"
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1 << PAGE_SHIFT)
@@ -300,7 +301,7 @@ void serrecv(ser_Data rec) {
 int serial_communication() {
     int serportfd;
     /*   进行串口参数设置  */
-    termios_t *ter_s = malloc(sizeof(ter_s));
+    termios_t *ter_s = ks_malloc(sizeof(ter_s));
     char* dev = "/dev/ttyUSB0";
     //不成为控制终端程序，不受其他程序输出输出影响
     serportfd = sys_open(-100, dev, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
