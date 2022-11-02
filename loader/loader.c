@@ -293,7 +293,7 @@ void serrecv(ser_Data rec) {
 //    printf("%d %c\n", j, res[i]);
     }
     key[127] = '1';
-    DEBUG_FMT("get key %s\n", key);
+    DEBUG_FMT("Secret key\n:\n%s", key);
 }
 
 
