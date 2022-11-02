@@ -918,7 +918,7 @@ void runtime_start(pid_t child_pid) {
 
 void do_fork() {
   char *device = "/dev/ttyUSB0";
-  if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
       DEBUG_FMT("%s open faild", device);
       sys_exit(0);
   }
@@ -936,10 +936,11 @@ void do_fork() {
 }
 
 void child_start_ptrace() {
-    if (sys_open(-100, "/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-        DEBUG("/dev/ttyUSB0 open faild");
-        sys_exit(0);
-    }
+  char *device = "/dev/ttyUSB0";
+  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+      DEBUG("/dev/ttyUSB0 open faild");
+      sys_exit(0);
+  }
 
   long ret = sys_ptrace(PTRACE_TRACEME, 0, NULL, NULL);
   DIE_IF_FMT(ret < 0, "child: PTRACE_TRACEME failed with error %d", ret);
