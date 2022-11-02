@@ -276,7 +276,6 @@ void serrecv(ser_Data rec) {
     int index = 0;
     char buf[512];
     while (1) {
-      memset(buf, '0', 512);
       ret = sys_read(rec.serfd, buf, 512);
         if (ret > 0) {
             buf[ret] = '\0';
