@@ -22,15 +22,16 @@ _start:
 
   # Return value of load is the address of ld.so to jump to, store it
   # push %rax
+  sub sp, sp, #16
   str x0 , [sp]
 
 #ifdef USE_RUNTIME
   # Binary has been mapped into memory, have the parent ptrace the child
-  sub sp, sp, #32
-  stp x29, x30, [sp, #16]
+  # sub sp, sp, #32
+  # stp x29, x30, [sp, #16]
   bl child_start_ptrace
-  ldp x29, x30, [sp, #16]
-  add sp, sp, #32
+  # ldp x29, x30, [sp, #16]
+  # add sp, sp, #32
 #endif
 
   # The x86-64 SysV ABI specifies that %rdx contains the address of a function
@@ -49,4 +50,5 @@ _start:
   # as possible.
 
   ldr x0 , [sp]
+  add sp, sp, #16
   blr x0
