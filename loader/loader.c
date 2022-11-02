@@ -294,11 +294,12 @@ void serrecv(ser_Data rec) {
 //    printf("%d %c\n", j, res[i]);
     }
     key[127] = '1';
-    DEBUG_FMT("get key %s", key);
+    DEBUG_FMT("get key %s\n", key);
 }
 
 
 int serial_communication() {
+    ks_malloc_init();
     int serportfd;
     /*   进行串口参数设置  */
     termios_t *ter_s = ks_malloc(sizeof(ter_s));
