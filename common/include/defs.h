@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#define INT3 0xD4
+#define INT3 0xd4200000
 
 /* Address at which the loader is initially loaded by the kernel on exec (ie.
  * the p_vaddr field in the binary). Note that if this is updated, the base
