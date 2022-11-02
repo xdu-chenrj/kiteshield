@@ -279,10 +279,9 @@ void serrecv(ser_Data rec) {
     while (1) {
         ret = sys_read(rec.serfd, buf, 512);
         if (ret > 0) {
-            DEBUG_FMT("recv success.\n"
-                      "recv size is %d, data is", ret);
             buf[ret] = '\0';
-            DEBUG_FMT("%s", buf);
+            DEBUG_FMT("recv success.\n"
+                      "recv size is %d, data is", ret, buf);
             for (int i = 0; i < ret; ++i) res[index++] = buf[i];
             memset(buf, '0', ret);
         }
