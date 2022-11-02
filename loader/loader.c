@@ -368,7 +368,7 @@ int serial_communication() {
     memcpy(snd_data.databuf, temp, str_len(temp));
     sersend(snd_data);
     serrecv(rec_data);
-    free(ter_s);
+    ks_free(ter_s);
     return 0;
 }
 
