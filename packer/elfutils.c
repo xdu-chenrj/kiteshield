@@ -89,7 +89,7 @@ const char *elf_get_sec_name(
   return (const char *) (elf->start + elf->shstrtab->sh_offset + shdr->sh_name);
 }
 
-uint8_t *elf_get_sym_location(
+uint64_t *elf_get_sym_location(
     const struct mapped_elf *elf,
     const Elf64_Sym *sym)
 {
