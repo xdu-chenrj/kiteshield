@@ -630,16 +630,16 @@ static void usage()
 
 static void banner()
 {
-  info("                                                    ________\n"
-       " _     _  _              _      _        _      _  |   ||   |\n"
-       "| |   (_)| |            | |    (_)      | |    | | |___||___|\n"
-       "| | __ _ | |_  ___  ___ | |__   _   ___ | |  __| | |___  ___|\n"
-       "| |/ /| || __|/ _ \\/ __|| '_ \\ | | / _ \\| | / _` | |   ||   | \n"
-       "|   < | || |_|  __/\\__ \\| | | || ||  __/| || (_| |  \\  ||  /\n"
-       "|_|\\_\\|_| \\__|\\___||___/|_| |_||_| \\___||_| \\__,_|   \\_||_/\n"
-       "Kiteshield: A packer/protector for x86-64 ELF binaries on Linux\n"
-       "Copyright (c) Rhys Rustad-Elliott, released under the MIT license\n"
-  );
+//  info("                                                    ________\n"
+//       " _     _  _              _      _        _      _  |   ||   |\n"
+//       "| |   (_)| |            | |    (_)      | |    | | |___||___|\n"
+//       "| | __ _ | |_  ___  ___ | |__   _   ___ | |  __| | |___  ___|\n"
+//       "| |/ /| || __|/ _ \\/ __|| '_ \\ | | / _ \\| | / _` | |   ||   | \n"
+//       "|   < | || |_|  __/\\__ \\| | | || ||  __/| || (_| |  \\  ||  /\n"
+//       "|_|\\_\\|_| \\__|\\___||___/|_| |_||_| \\___||_| \\__,_|   \\_||_/\n"
+//       "Kiteshield: A packer/protector for x86-64 ELF binaries on Linux\n"
+//       "Copyright (c) Rhys Rustad-Elliott, released under the MIT license\n"
+//  );
 }
 
 

@@ -47,24 +47,6 @@
 
 struct runtime_info rt_info __attribute__((section(".rt_info")));
 
-/*
- * serial check
- */
-int serial_check() {
-    DEBUG("serial check");
-    int serportfd;
-    /*   进行串口参数设置  */
-    char *dev = "/dev/ttyUSB0";
-    //不成为控制终端程序，不受其他程序输出输出影响
-    serportfd = sys_open(dev, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
-    DEBUG_FMT("The result of opening the serial port device: %d", serportfd);
-    if (serportfd < 0) {
-        DEBUG_FMT("%s open faild", dev);
-        return 0;
-    }
-    DEBUG_FMT("connection device %s successful", dev);
-    return 1;
-}
 
 /* Allocated once per tg to store information common to a thread group. */
 struct thread_group {
@@ -849,12 +831,6 @@ static void handle_thread_exit(
 void runtime_start(pid_t child_pid)
 {
   DEBUG("starting ptrace runtime");
-  int r = serial_check();
-  DEBUG_FMT("serial_check %d", r);
-  if(!r) {
-      DEBUG("I want to exit");
-      sys_exit(1);
-  }
   obf_deobf_rt_info(&rt_info);
 
   DEBUG_FMT("number of trap points: %u", rt_info.ntraps);
@@ -964,10 +940,11 @@ void runtime_start(pid_t child_pid)
 
 void do_fork()
 {
-    if (sys_open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-        DEBUG("/dev/ttyUSB0 open faild");
-        sys_exit(0);
-    }
+  char *device = "/dev/ttyUSB0";
+  if (sys_open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+      DEBUG_FMT("%s open faild", device);
+      sys_exit(0);
+  }
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
 
   pid_t pid = sys_fork();
@@ -984,10 +961,11 @@ void do_fork()
 
 void child_start_ptrace()
 {
-    if (sys_open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-        DEBUG("/dev/ttyUSB0 open faild");
-        sys_exit(0);
-    }
+  char *device = "/dev/ttyUSB0";
+  if (sys_open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+    DEBUG_FMT("%s open faild", device);
+    sys_exit(0);
+  }
 
   long ret = sys_ptrace(PTRACE_TRACEME, 0, NULL, NULL);
   DIE_IF_FMT(ret < 0, "child: PTRACE_TRACEME failed with error %d", ret);
