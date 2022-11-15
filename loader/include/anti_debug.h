@@ -48,10 +48,10 @@ static inline int __attribute__((always_inline)) antidebug_proc_check_traced() {
    * and verifying that st_size is zero (which it should always be if /proc is
    * a real procfs. If a reverse engineer tries to create a fake proc with a
    * regular file for /proc/<pid>/status, st_size should be greater than 0. */
-  struct stat stat;
-  DIE_IF_FMT(sys_stat(-100, proc_path, O_RDWR, STATX_ALL, &stat) < 0,
+  struct statx stat;
+  DIE_IF_FMT(sys_stat(-100, proc_path, O_RDONLY, STATX_ALL, &stat) < 0,
              "could not stat %s", proc_path);
-  if (stat.st_size != 0)
+  if (stat.stx_size != 0)
     return 1;
 
   int fd = sys_open(-100, proc_path, O_RDONLY, 0);

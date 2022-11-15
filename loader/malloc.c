@@ -3,7 +3,7 @@
 #include "loader/include/syscalls.h"
 
 /* 20 MiB */
-#define HEAP_SIZE (1 << 20)
+#define HEAP_SIZE (1 << 21)
 
 void *heap_base = NULL;
 

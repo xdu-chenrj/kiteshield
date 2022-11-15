@@ -13,7 +13,10 @@
 
 #include "loader/include/types.h"
 #include <stdint.h>
-
+typedef unsigned short __u16;
+typedef unsigned __u32;
+typedef unsigned long long __u64;
+typedef signed long long __s64;
 /* mmap syscall constants/defines */
 #define MAP_SHARED 0x01
 #define MAP_PRIVATE 0x02
@@ -265,6 +268,45 @@ struct stat {
   unsigned long long st_ino;
 };
 
+struct statx_timestamp
+{
+    __s64 tv_sec;    /* Seconds since the Epoch (UNIX time) */
+    __u32 tv_nsec;   /* Nanoseconds since tv_sec */
+};
+
+struct statx{
+    __u32 stx_mask;        /* Mask of bits indicating
+                              filled fields */
+    __u32 stx_blksize;     /* Block size for filesystem I/O */
+    __u64 stx_attributes;  /* Extra file attribute indicators */
+    __u32 stx_nlink;       /* Number of hard links */
+    __u32 stx_uid;         /* User ID of owner */
+    __u32 stx_gid;         /* Group ID of owner */
+    __u16 stx_mode;        /* File type and mode */
+    __u64 stx_ino;         /* Inode number */
+    __u64 stx_size;        /* Total size in bytes */
+    __u64 stx_blocks;      /* Number of 512B blocks allocated */
+    __u64 stx_attributes_mask;
+    /* Mask to show what's supported
+       in stx_attributes */
+
+    /* The following fields are file timestamps */
+    struct statx_timestamp stx_atime;  /* Last access */
+    struct statx_timestamp stx_btime;  /* Creation */
+    struct statx_timestamp stx_ctime;  /* Last status change */
+    struct statx_timestamp stx_mtime;  /* Last modification */
+
+    /* If this file represents a device, then the next two
+       fields contain the ID of the device */
+    __u32 stx_rdev_major;  /* Major ID */
+    __u32 stx_rdev_minor;  /* Minor ID */
+
+    /* The next two fields contain the ID of the device
+       containing the filesystem where the file resides */
+    __u32 stx_dev_major;   /* Major ID */
+    __u32 stx_dev_minor;   /* Minor ID */
+};
+
 /* setrlimit constants/defines */
 typedef unsigned long rlim_t;
 struct rlimit {
@@ -387,7 +429,7 @@ int sys_prctl(int option, unsigned long arg2, unsigned long arg3,
 //     const char *pathname,
 //     struct stat *statbuf);
 int sys_stat(int dirfd, const char *pathname, int flags, unsigned int mask,
-             struct stat *statbuf);
+             struct statx *statbuf);
 
 int sys_setrlimit(int resource, struct rlimit *rlim);
 

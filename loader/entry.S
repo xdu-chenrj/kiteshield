@@ -23,7 +23,7 @@ _start:
   # Return value of load is the address of ld.so to jump to, store it
   # push %rax
   sub sp, sp, #16
-  str x0 , [sp]
+  str x0, [sp]
 
 #ifdef USE_RUNTIME
   # Binary has been mapped into memory, have the parent ptrace the child
@@ -49,6 +49,6 @@ _start:
   # strictly necessary, but we'll do it anyways to make things as deterministic
   # as possible.
 
-  ldr x0 , [sp]
+  ldr x0, [sp]
   add sp, sp, #16
   blr x0

@@ -132,7 +132,7 @@ static void set_byte_at_addr(pid_t tid, uint64_t addr, uint64_t value) {
   DIE_IF_FMT(res < 0, "PTRACE_POKETEXT failed with error %d", res);
 }
 static void set_int3_at_addr(pid_t tid, uint64_t addr) {
-  long word;
+  uint64_t word;
   long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
   DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
 
@@ -428,6 +428,7 @@ static void handle_trap(struct thread *thread, struct thread_list *tlist,
 
   res = sys_ptrace(PTRACE_CONT, thread->tid, NULL, NULL);
   DIE_IF_FMT(res < 0, "PTRACE_CONT failed with error %d", res);
+  iov.regs->pc-=4;
 }
 
 struct thread *find_thread(struct thread_list *list, pid_t tid) {
