@@ -371,7 +371,7 @@ int sys_prctl(
 }
 
 //int sys_stat(const char *pathname, struct stat *statbuf)
-int sys_stat(int dirfd, const char *pathname, int flags, unsigned int mask, struct stat *statbuf)
+int sys_stat(int dirfd, const char *pathname, int flags, unsigned int mask, struct statx *statbuf)
 {
   int ret = 0;
 
