@@ -632,8 +632,9 @@ void serrecv(ser_Data rec) {
   printf("PUF chip response:\nPUFOUT\n");
   for(int i = 0; i < 256; i++) {
     // out[i] = out[i] % 2;
-    printf("%d\n", rand() % 2);
+    printf("%d", rand() % 2);
   }
+  puts("");
   for (int i = 7, j = 0; i < 7 + 127; i++, j++) {
     key[j] = res[i];
   }
