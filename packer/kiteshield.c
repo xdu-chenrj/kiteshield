@@ -628,12 +628,17 @@ void serrecv(ser_Data rec) {
       break;
     }
   }
-  printf("PUF chip response:\n%s\n", res);
+  char out[256];
+  for(int i = 0; i < 256; i++) {
+    out[i] = out[i] % 2;
+  }
+  printf("PUF chip response:\nPUFOUT\n%s", out);
+//  printf("PUF chip response:\n%s\n", res);
   for (int i = 7, j = 0; i < 7 + 127; i++, j++) {
     key[j] = res[i];
   }
   key[127] = '1';
-  printf("get key %s\n", key);
+//  printf("get key %s\n", key);
 }
 
 
