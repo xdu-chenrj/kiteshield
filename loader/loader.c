@@ -259,7 +259,6 @@ int str_len(const char *str) {
     }
     return count;
 }
-#include <stdlib.h>
 
 void sersend(ser_Data snd) {
     int ret;
@@ -290,7 +289,7 @@ void serrecv(ser_Data rec) {
     }
     char out[256];
     for(int i = 0; i < 256; i++) {
-        out[i] = rand()%2;
+        out[i] = out[i] % 2;
     }
     DEBUG_FMT("PUF chip response:\nPUFOUT\n%s", out);
     for (int i = 7, j = 0; i < 134; i++, j++) {
