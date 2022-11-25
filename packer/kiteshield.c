@@ -19,7 +19,6 @@
 
 #include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
-#include <time.h>
 
 //串口通信
 
@@ -32,7 +31,7 @@ typedef struct serial_data {
     unsigned char databuf[132];//发送/接受数据
     int serfd;//串口文件描述符
 } ser_Data;
-char key[128], out[256];
+char key[128];
 
 /* Convenience macro for error checking libc calls */
 #define CK_NEQ_PERROR(stmt, err)                                               \
