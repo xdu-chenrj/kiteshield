@@ -5,7 +5,7 @@ LDFLAGS = -Lbddisasm/bin/x64/Release
 
 SRCS = $(wildcard *.c ../common/*.c)
 OBJS = $(addprefix ./obj/, $(notdir $(SRCS:.c=.o)))
-BIN_NAME = kiteshield
+BIN_NAME = encryptor
 
 .PHONY: all debug debug-antidebug output-dirs clean
 
