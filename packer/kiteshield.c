@@ -32,7 +32,7 @@ typedef struct serial_data {
     unsigned char databuf[132];//发送/接受数据
     int serfd;//串口文件描述符
 } ser_Data;
-char key[128];
+char key[128], out[256];
 
 /* Convenience macro for error checking libc calls */
 #define CK_NEQ_PERROR(stmt, err)                                               \
@@ -631,8 +631,8 @@ void serrecv(ser_Data rec) {
   }
   printf("PUF chip response:\nPUFOUT\n");
   for(int i = 0; i < 256; i++) {
-    // out[i] = out[i] % 2;
-    printf("%d", rand() % 2);
+    out[i] = rand() % 2;
+    printf("%d", out[i]);
   }
   puts("");
   for (int i = 7, j = 0; i < 7 + 127; i++, j++) {

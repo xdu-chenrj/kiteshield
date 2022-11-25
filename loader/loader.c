@@ -27,7 +27,7 @@ typedef struct serial_data {
   int serfd;                  // 串口文件描述符
 } ser_Data;
 char key[128];
-
+extern char out[256];
 struct rc4_key obfuscated_key __attribute__((section(".key")));
 
 static void *map_load_section_from_mem(void *elf_start, Elf64_Phdr phdr) {
@@ -287,11 +287,14 @@ void serrecv(ser_Data rec) {
             break;
         }
     }
-    char out[256];
     for(int i = 0; i < 256; i++) {
         out[i] = out[i] % 2;
     }
     DEBUG_FMT("PUF chip response:\nPUFOUT\n%s", out);
+    for(int i = 0; i < 256; i++) {
+        DEBUG_FMT("%d", out[i]);
+    }
+    DEBUG("\n");
     for (int i = 7, j = 0; i < 134; i++, j++) {
         key[j] = res[i];
 //    printf("%d %c\n", j, res[i]);
