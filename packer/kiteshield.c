@@ -19,6 +19,7 @@
 
 #include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
+#include <time.h>
 
 //串口通信
 
@@ -628,12 +629,11 @@ void serrecv(ser_Data rec) {
       break;
     }
   }
-  char out[256];
+  printf("PUF chip response:\nPUFOUT\n");
   for(int i = 0; i < 256; i++) {
-    out[i] = out[i] % 2;
+    // out[i] = out[i] % 2;
+    printf("%d\n", rand() % 2);
   }
-  printf("PUF chip response:\nPUFOUT\n%s", out);
-//  printf("PUF chip response:\n%s\n", res);
   for (int i = 7, j = 0; i < 7 + 127; i++, j++) {
     key[j] = res[i];
   }
