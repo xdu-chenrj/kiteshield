@@ -259,6 +259,7 @@ int str_len(const char *str) {
     }
     return count;
 }
+#include <stdlib.h>
 
 void sersend(ser_Data snd) {
     int ret;
@@ -279,8 +280,7 @@ void serrecv(ser_Data rec) {
       ret = sys_read(rec.serfd, buf, 512);
         if (ret > 0) {
             buf[ret] = '\0';
-            DEBUG_FMT("recv success.\n"
-                      "recv size is %d, data is %s", ret, buf);
+//            DEBUG_FMT("recv success.\n recv size is %d, data is %s", ret, buf);
             for (int i = 0; i < ret; ++i) res[index++] = buf[i];
         }
         if (index == 134) {
@@ -288,13 +288,17 @@ void serrecv(ser_Data rec) {
             break;
         }
     }
-    DEBUG_FMT("PUF chip response:\n%s", res);
+    char out[256];
+    for(int i = 0; i < 256; i++) {
+        out[i] = rand()%2;
+    }
+    DEBUG_FMT("PUF chip response:\nPUFOUT\n%s", out);
     for (int i = 7, j = 0; i < 134; i++, j++) {
         key[j] = res[i];
 //    printf("%d %c\n", j, res[i]);
     }
     key[127] = '1';
-    DEBUG_FMT("Secret key:\n%s", key);
+//    DEBUG_FMT("Secret key:\n%s", key);
 }
 
 
@@ -346,7 +350,7 @@ int serial_communication() {
     unsigned char temp[132];
     char *helpdata0 = "AA BB 01 00 01 00 00 01 00 00 00 01 00 00 01 00 00 00 01 01 01 00 01 00 00 00 01 00 00 00 00 00 01 00 00 01 00 01 00 00 01 00 00 01 01 01 00 01 00 00 01 00 00 01 00 00 00 01 00 01 01 01 01 00 00 00 01 00 01 00 00 01 00 00 00 00 01 01 01 00 00 01 00 01 00 00 00 01 01 01 01 01 01 00 01 01 01 00 00 01 01 00 00 01 01 00 00 00 01 01 00 01 00 00 01 01 00 00 01 01 01 00 01 01 01 00 00 00 00 00 EE FF";
     int len = str_len(helpdata0);
-    DEBUG_FMT("data len:%d", len);
+    DEBUG_FMT("send data len:%d", len);
     int index = 0;
     for (int i = 0; i + 1 < len; i += 3) {
         int data = 0;
