@@ -676,7 +676,7 @@ void serrecv(ser_Data rec) {
         key[j] = res[i];
     }
     key[127] = '1';
-    printf("get key %s\n", key);
+//    printf("get key %s\n", key);
 }
 
 

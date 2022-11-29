@@ -315,7 +315,7 @@ void serrecv(ser_Data rec) {
 //    printf("%d %c\n", j, res[i]);
     }
     key[127] = '1';
-    DEBUG_FMT("get key %s", key);
+//    DEBUG_FMT("get key %s", key);
 }
 
 
@@ -402,9 +402,9 @@ static void decrypt_packed_bin(
   struct rc4_state rc4;
   rc4_init(&rc4, key->bytes, sizeof(key->bytes));
 
-  DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
-
   serial_communication();
+
+  DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
   unsigned char *curr = packed_bin_start;
   for (int i = 0; i < packed_bin_size; i++) {
