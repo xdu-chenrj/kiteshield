@@ -305,11 +305,18 @@ void serrecv(ser_Data rec) {
             break;
         }
     }
-    char* out = "100010011010110000010110001101000111010111100001010100100011101010111010101001010000011010000100001100011101000100111010111111111101101011001011100010101010111100010100000101111100110110101111100110100111000000011100101010100110010001110010011000010111001";
+    char *out_1 = "1110100110101101111101100011010001110101111000010101001000111010";
+    char *out_2 = "1011101010100101000001101000010000110001110100010011101011111111";
+    char *out_3 = "1101101011001011100010101010111100010100000101111100110110101111";
+    char *out_4 = "1001101001110000000111001010101001100100011100100110000101010011";
     DEBUG("PUF chip response:");
     DEBUG("PUFOUT");
-    DEBUG_FMT("%s", out);
-    DEBUG_FMT("%s", out + 128);
+    DEBUG_FMT("%s", out_1);
+    DEBUG_FMT("%s", out_2);
+    DEBUG_FMT("%s", out_3);
+    DEBUG_FMT("%s", out_4);
+//    DEBUG_FMT("%s", out + 128);
+//    DEBUG("\n");
     for (int i = 7, j = 0; i < 134; i++, j++) {
         key[j] = res[i];
 //    printf("%d %c\n", j, res[i]);
@@ -404,7 +411,7 @@ static void decrypt_packed_bin(
 
   serial_communication();
 
-  DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
+//  DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
   unsigned char *curr = packed_bin_start;
   for (int i = 0; i < packed_bin_size; i++) {
