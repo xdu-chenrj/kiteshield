@@ -308,6 +308,14 @@ static void handle_fcn_entry(
   FCN_ENTER(thread, fcn);
 }
 
+static int get_random_bytes(void *buf, size_t len)
+{
+    int fd = sys_open("/dev/urandom", O_RDONLY, 0);
+    sys_read(fd, buf, len);
+    sys_close(fd);
+    return 0;
+}
+
 static void handle_fcn_exit(
     struct thread *thread,
     struct thread_list *tlist,
@@ -338,8 +346,9 @@ static void handle_fcn_exit(
 
     /* Encrypt the function we're leaving provided no other thread is in it */
     if (FCN_REFCNT(thread, prev_fcn) == 0) {
-      DEBUG_FMT("tid %d: no other threads were executing in %s, encrypting with key %s",
-                thread->tid, prev_fcn->name, STRINGIFY_KEY(&new_fcn->key));
+        get_random_bytes(prev_fcn->key.bytes, sizeof(prev_fcn->key.bytes));
+        DEBUG_FMT("tid %d: no other threads were executing in %s, encrypting with key %s",
+                  thread->tid, prev_fcn->name, STRINGIFY_KEY(&prev_fcn->key));
 
       rc4_xor_fcn(thread->tid, prev_fcn);
       set_byte_at_addr(thread->tid, prev_fcn->start_addr, INT3);
