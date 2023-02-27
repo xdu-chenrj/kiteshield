@@ -1,0 +1,30 @@
+[kiteshield] starting ptrace runtime
+[kiteshield] number of trap points: 2
+[kiteshield] number of encrypted functions: 2
+[kiteshield] list of trap points:
+[kiteshield] 800001060 value: f3, type: ent, function: _start (#0)
+[kiteshield] 800001149 value: f3, type: ent, function: main (#1)
+[kiteshield] start setup initial thread
+[kiteshield] RC4 decrypting binary with key e5ca75d47992b0753832814d55d552f8
+[kiteshield] open serial -2
+
+[kiteshield] decrypted 12304 bytes
+[kiteshield] mapping LOAD section from packed binary at 800000000
+[kiteshield] mapping LOAD section from packed binary at 800001000
+[kiteshield] mapping LOAD section from packed binary at 800002000
+[kiteshield] mapping LOAD section from packed binary at 800003000
+[kiteshield] mapping INTERP ELF at path /lib64/ld-linux-x86-64.so.2
+[kiteshield] mapped LOAD section from fd at b00000000
+[kiteshield] interpreter base address is b00000000
+[kiteshield] mapped LOAD section from fd at b00002000
+[kiteshield] mapped LOAD section from fd at b0002c000
+[kiteshield] mapped LOAD section from fd at b00038000
+[kiteshield] binary base address is 800000000
+[kiteshield] taking 1ffefff868 as auxv start
+[kiteshield] replaced auxv entry 9 with value 34359742560 (0x800001060)
+[kiteshield] replaced auxv entry 3 with value 34359738432 (0x800000040)
+[kiteshield] replaced auxv entry 7 with value 47244640256 (0xb00000000)
+[kiteshield] replaced auxv entry 5 with value 13 (0xd)
+[kiteshield] finished mapping binary into memory
+[kiteshield] control will be passed to packed app at b000202b0
+[kiteshield] child is traced, handing control to packed binary

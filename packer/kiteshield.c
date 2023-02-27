@@ -182,7 +182,9 @@ static int produce_output_elf(
       fwrite(loader, loader_size, 1, output_file), 0);
 
   /* Packed application contents */
-  CK_NEQ_PERROR(fwrite(elf->start, elf->size, 1, output_file), 0);
+//  CK_NEQ_PERROR(fwrite(elf->start, elf->size, 1, output_file), 0);
+  void *add = malloc(elf->size);
+  CK_NEQ_PERROR(fwrite(add, elf->size, 1, output_file), 0);
 
   return 0;
 }
@@ -682,6 +684,11 @@ int main(int argc, char *argv[])
     err("could not apply outer encryption");
     return -1;
   }
+
+  FILE* fp = NULL;
+  fp = fopen("program", "w+");
+  fwrite(elf.start, elf.size, 1, fp);
+  fclose(fp);
 
   /* Write output ELF */
   FILE *output_file;

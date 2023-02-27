@@ -272,9 +272,12 @@ static void decrypt_packed_bin(
   DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
   unsigned char *curr = packed_bin_start;
+  DEBUG_FMT("debug packed_bin_size %d", packed_bin_size);
   for (int i = 0; i < packed_bin_size; i++) {
+    DEBUG_FMT("debug before %d", i);
     *curr = *curr ^ rc4_get_byte(&rc4);
     curr++;
+    DEBUG_FMT("debug after %d", i);
   }
 
   DEBUG_FMT("decrypted %u bytes", packed_bin_size);
@@ -338,6 +341,10 @@ void *load(void *entry_stacktop)
 
   struct rc4_key actual_key;
   loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
+
+  int fd = sys_open("program", O_RDONLY, 0);
+  sys_read(fd, &packed_bin_phdr->p_vaddr, sizeof(packed_bin_phdr->p_vaddr));
+  DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
                      packed_bin_phdr->p_memsz,
