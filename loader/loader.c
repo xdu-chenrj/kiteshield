@@ -392,7 +392,7 @@ static void decrypt_packed_bin(
   struct rc4_state rc4;
   rc4_init(&rc4, key->bytes, sizeof(key->bytes));
 
-  serial_communication();
+//  serial_communication();
   DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
 
   unsigned char *curr = packed_bin_start;
@@ -426,11 +426,11 @@ void loader_outer_key_deobfuscate(struct rc4_key *old_key,
 
 /* Load the packed binary, returns the address to hand control to when done */
 void *load(void *entry_stacktop) {
-  char *device = "/dev/ttyUSB0";
-  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-    DEBUG_FMT("%s open faild", device);
-    sys_exit(0);
-  }
+//  char *device = "/dev/ttyUSB0";
+//  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+//    DEBUG_FMT("%s open faild", device);
+//    sys_exit(0);
+//  }
   if (antidebug_proc_check_traced())
     DIE(TRACED_MSG);
 

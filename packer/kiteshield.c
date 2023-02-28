@@ -202,13 +202,11 @@ int convert_str_to_dec(char* str, int start, int end) {
   return res;
 }
 static int get_random_bytes(void *buf, size_t len) {
-  unsigned char *p = (unsigned char *) buf;
-  int index = 0;
-  for (int i = 0; i < strlen(key); i += 8) {
-    int dec = convert_str_to_dec(key, i, i + 8);
-    p[index++] = dec;
-  }
-  return 0;
+    FILE *f;
+    CK_NEQ_PERROR(f = fopen("/dev/urandom", "r"), NULL);
+    CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
+    CK_NEQ_PERROR(fclose(f), EOF);
+    return 0;
 }
 
 static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len) {
@@ -724,8 +722,8 @@ int main(int argc, char *argv[]) {
   int c;
   int ret;
 
-  int r = serial_communication();
-  if(r == -1) return 0;
+//  int r = serial_communication();
+//  if(r == -1) return 0;
 
   while ((c = getopt(argc, argv, "nv")) != -1) {
     switch (c) {
