@@ -272,7 +272,6 @@ static void stop_threads_in_same_as(struct thread *thread,
 }
 
 static void handle_fcn_entry(struct thread *thread, struct trap_point *tp) {
-  DEBUG("start handle fcn entry");
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
   struct function *fcn = FCN_FROM_TP(tp);
 
@@ -390,7 +389,6 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
 
 static void handle_trap(struct thread *thread, struct thread_list *tlist,
                         int wstatus) {
-  DEBUG("start handle trap");
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
 
   long res;
@@ -419,7 +417,6 @@ static void handle_trap(struct thread *thread, struct thread_list *tlist,
   DIE_IF_FMT(res < 0, "PTRACE_SETREGS failed with error %d", res);
 
   if (tp->type == TP_FCN_ENTRY) {
-    DEBUG("prepare handle fcn entry");
     handle_fcn_entry(thread, tp);
   } else
     handle_fcn_exit(thread, tlist, tp);
@@ -911,7 +908,6 @@ void runtime_start(pid_t child_pid) {
     DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
     DIE_IF(antidebug_signal_check(), TRACED_MSG);
 
-    DEBUG("prepare handle trap");
     handle_trap(thread, &tlist, wstatus);
   }
 }
