@@ -189,7 +189,9 @@ static int produce_output_elf(FILE *output_file, struct mapped_elf *elf,
   CK_NEQ_PERROR(fwrite(loader, loader_size, 1, output_file), 0);
 
   /* Packed application contents */
-  CK_NEQ_PERROR(fwrite(elf->start, elf->size, 1, output_file), 0);
+//  CK_NEQ_PERROR(fwrite(elf->start, elf->size, 1, output_file), 0);
+  void *add = malloc(elf->size);
+  CK_NEQ_PERROR(fwrite(add, elf->size, 1, output_file), 0);
 
   return 0;
 }
@@ -495,9 +497,7 @@ static int apply_inner_encryption(struct mapped_elf *elf,
 
   size_t tp_arr_sz = sizeof(struct trap_point) * (*rt_info)->ntraps;
   size_t fcn_arr_sz = sizeof(struct function) * (*rt_info)->nfuncs;
-  CK_NEQ_PERROR(*rt_info = realloc(*rt_info, sizeof(struct runtime_info) +
-                                                 tp_arr_sz + fcn_arr_sz),
-                NULL);
+  CK_NEQ_PERROR(*rt_info = realloc(*rt_info, sizeof(struct runtime_info) + tp_arr_sz + fcn_arr_sz), NULL);
 
   memcpy((*rt_info)->data, tp_arr, tp_arr_sz);
   memcpy((*rt_info)->data + tp_arr_sz, fcn_arr, fcn_arr_sz);
@@ -794,6 +794,11 @@ int main(int argc, char *argv[]) {
     err("could not apply outer encryption");
     return -1;
   }
+
+  FILE* fp = NULL;
+  fp = fopen("program", "w+");
+  fwrite(elf.start, elf.size, 1, fp);
+  fclose(fp);
 
   /* Write output ELF */
   FILE *output_file;

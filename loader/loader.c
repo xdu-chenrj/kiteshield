@@ -463,7 +463,12 @@ void *load(void *entry_stacktop) {
   struct rc4_key actual_key;
   loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
 
-  decrypt_packed_bin((void *)packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz,
+  int fd = sys_open(-100, "program", O_RDONLY, 0);
+  sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+  DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
+
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
+                     packed_bin_phdr->p_memsz,
                      &actual_key);
 
   /* Entry point for ld.so if this is a statically linked binary, otherwise
