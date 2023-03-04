@@ -14,7 +14,7 @@
 #include "loader/include/syscalls.h"
 #include "loader/include/types.h"
 
-struct rc4_key obfuscated_key __attribute__((section(".key")));
+#include "loader/include/loader.h"
 
 
 /* See PTRACE_SETOPTIONS in ptrace manpage */
