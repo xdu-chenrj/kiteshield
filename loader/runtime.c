@@ -884,7 +884,7 @@ void runtime_start(pid_t child_pid) {
       if (tlist.size == 0) {
         DEBUG("all threads exited, exiting");
 
-        DEBUG_FMT("# %X", obfuscated_key.bytes);
+        DEBUG_FMT("key %s", STRINGIFY_KEY(obfuscated_key));
 
         sys_exit(0);
       }
