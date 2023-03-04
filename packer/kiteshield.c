@@ -525,11 +525,12 @@ static int apply_outer_encryption(struct mapped_elf *elf, void *loader_start,
   /* Encrypt the actual binary */
   encrypt_memory_range(&key, elf->start, elf->size);
 
+  printf("key %s", STRINGIFY_KEY(key));
+
   /* Obfuscate Key */
   struct rc4_key obfuscated_key;
   obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
 
-  printf("key %s", STRINGIFY_KEY(key));
   printf("Obfuscate key %s", STRINGIFY_KEY(obfuscated_key));
 
   /* Copy over obfuscated key so the loader can decrypt */
