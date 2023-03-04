@@ -42,22 +42,13 @@ char key[128];
     }                                                                          \
   } while (0)
 
-#define STRINGIFY_KEY(key) \
-  ({ char buf[(sizeof((key)->bytes) * 2) + 1]; \
-     char *buf_ptr = buf; \
-     for (int i = 0; i < KEY_SIZE; i++) { \
-       uint8_t byte = (key)->bytes[i]; \
-       if ((byte & 0xF0) == 0) { \
-         (*buf_ptr++) = '0'; \
-         itoa((key)->bytes[i], 0, buf_ptr, 8, 16); \
-         buf_ptr ++; \
-       } else { \
-         itoa((key)->bytes[i], 0, buf_ptr, 8, 16); \
-         buf_ptr += 2; \
-       } \
-     }; \
-     buf[sizeof((key)->bytes) * 2] = '\0'; \
-     buf; }) \
+#define STRINGIFY_KEY(key)                                                    \
+  ({ char buf[(sizeof(key.bytes) * 2) + 1];                                   \
+     for (int i = 0; i < sizeof(key.bytes); i++) {                            \
+       sprintf(&buf[i * 2], "%02hhx", key.bytes[i]);                          \
+     };                                                                       \
+     buf; })
+
 static int log_verbose = 0;
 
 /* Needs to be defined for bddisasm */
@@ -538,8 +529,8 @@ static int apply_outer_encryption(struct mapped_elf *elf, void *loader_start,
   struct rc4_key obfuscated_key;
   obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
 
-  printf("key %s", STRINGIFY_KEY(&key));
-  printf("Obfuscate key %s", STRINGIFY_KEY(&obfuscated_key));
+  printf("key %s", STRINGIFY_KEY(key));
+  printf("Obfuscate key %s", STRINGIFY_KEY(obfuscated_key));
 
   /* Copy over obfuscated key so the loader can decrypt */
   *((struct rc4_key *)loader_start) = obfuscated_key;
