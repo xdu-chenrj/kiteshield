@@ -14,6 +14,9 @@
 #include "loader/include/syscalls.h"
 #include "loader/include/types.h"
 
+struct rc4_key obfuscated_key __attribute__((section(".key")));
+
+
 /* See PTRACE_SETOPTIONS in ptrace manpage */
 #define PTRACE_EVENT_PRESENT(wstatus, event)                                   \
   ((wstatus) >> 8 == (SIGTRAP | (event) << 8))
@@ -880,6 +883,9 @@ void runtime_start(pid_t child_pid) {
 
       if (tlist.size == 0) {
         DEBUG("all threads exited, exiting");
+
+        DEBUG_FMT("# %X", obfuscated_key.bytes);
+
         sys_exit(0);
       }
       continue;
