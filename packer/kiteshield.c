@@ -19,6 +19,7 @@
 
 #include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
+#include "loader/include/debug.h"
 
 //串口通信
 
@@ -530,6 +531,9 @@ static int apply_outer_encryption(struct mapped_elf *elf, void *loader_start,
   /* Obfuscate Key */
   struct rc4_key obfuscated_key;
   obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
+
+  DEBUG_FMT("key %s", STRINGIFY_KEY(&key));
+  DEBUG_FMT("Obfuscate key %s", STRINGIFY_KEY(&obfuscated_key));
 
   /* Copy over obfuscated key so the loader can decrypt */
   *((struct rc4_key *)loader_start) = obfuscated_key;
