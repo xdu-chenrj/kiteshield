@@ -1,5 +1,6 @@
 #ifdef USE_RUNTIME
 
+#include <elf.h>
 #include "common/include/defs.h"
 #include "common/include/obfuscation.h"
 #include "common/include/rc4.h"
@@ -13,6 +14,7 @@
 #include "loader/include/string.h"
 #include "loader/include/malloc.h"
 #include "loader/include/anti_debug.h"
+#include "loader/include/loader.h"
 
 /* See PTRACE_SETOPTIONS in ptrace manpage */
 #define PTRACE_EVENT_PRESENT(wstatus, event) \
@@ -836,6 +838,56 @@ static void handle_thread_exit(
   }
 }
 
+
+void encrypt_memory_range(struct rc4_key *key, void *start, size_t len)
+{
+  struct rc4_state rc4;
+  rc4_init(&rc4, key->bytes, sizeof(key->bytes));
+
+  uint8_t *curr = start;
+  for (size_t i = 0; i < len; i++) {
+    *curr = *curr ^ rc4_get_byte(&rc4);
+    curr++;
+  }
+}
+
+//void external_decryption() {
+//  Elf64_Ehdr *us_ehdr = (Elf64_Ehdr *) LOADER_ADDR;
+//
+//  /* The PHDR in our binary corresponding to the loader (ie. this code) */
+//  Elf64_Phdr *loader_phdr = (Elf64_Phdr *)
+//          (LOADER_ADDR + us_ehdr->e_phoff);
+//
+//  /* The PHDR in our binary corresponding to the encrypted app */
+//  Elf64_Phdr *packed_bin_phdr = loader_phdr + 1;
+//
+//  struct rc4_key actual_key = obfuscated_key;
+//  DEBUG_FMT("obfuscated_key %s", STRINGIFY_KEY(&obfuscated_key));
+//
+//
+//  int fd = sys_open("ouk", O_RDONLY, 0);
+//  if ((void *) sys_read(fd, &actual_key, 1) == NULL) {
+//    DEBUG("read out key error");
+//  }
+//  else {
+//    DEBUG("read out key success");
+//    DEBUG_FMT("actual_key %s", STRINGIFY_KEY(&actual_key));
+//  }
+//  fd = sys_open("program", O_RDONLY, 0);
+//  sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+//  DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
+//
+//  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
+//                     packed_bin_phdr->p_memsz,
+//                     &actual_key);
+//
+////  fd = sys_open("program_1", O_RDONLY, 0);
+////  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+//  sys_close(fd);
+//}
+
+
+
 void runtime_start(pid_t child_pid)
 {
   DEBUG("starting ptrace runtime");
@@ -911,6 +963,37 @@ void runtime_start(pid_t child_pid)
 
       if (tlist.size == 0) {
         DEBUG("all threads exited, exiting");
+        struct rc4_key key = obfuscated_key;
+//        get_random_bytes(key.bytes, sizeof(key.bytes));
+
+        int fd = sys_open("program", O_RDONLY, 777);
+        size_t size = sys_lseek(fd, 0L, SEEK_END);
+        char *buf = ks_malloc(size);
+        DEBUG_FMT("program size %d", size);
+        fd = sys_open("program", O_RDONLY, 777);
+        sys_read(fd, buf, size);
+
+//        external_decryption();
+
+//        encrypt_memory_range(&key, buf, size);
+        DEBUG_FMT("encrypt buf %p", buf);
+        fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
+        sys_write(fd, buf, size);
+        sys_close(fd);
+
+        fd = sys_open("ouk", O_RDONLY, 777);
+        size = sys_lseek(fd, 0L, SEEK_END);
+        buf = ks_malloc(size);
+        DEBUG_FMT("ouk size %d", size);
+        fd = sys_open("ouk", O_RDONLY, 777);
+        sys_read(fd, buf, size);
+        DEBUG_FMT("%p", buf);
+        sys_close(fd);
+
+        fd = sys_open("ouk", O_RDWR | O_CREAT | O_TRUNC, 777);
+        sys_write(fd, buf, size);
+        sys_close(fd);
+        DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&key));
         sys_exit(0);
       }
       continue;

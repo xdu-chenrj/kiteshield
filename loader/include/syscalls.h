@@ -26,9 +26,23 @@
 #define PROT_NONE 0x0
 
 /* open syscall constants/defines */
+
+/**
+ * O_RDONLY：只读模式打开文件，数值为0。
+ * O_WRONLY：只写模式打开文件，数值为1。
+ * O_RDWR：读写模式打开文件，数值为2。
+ * O_CREAT：如果文件不存在，则创建它，数值为0100。
+ * O_EXCL：如果与O_CREAT一起使用，并且文件已经存在，则open函数将失败，数值为0200。
+ * O_TRUNC：如果文件已经存在，则截断文件为0长度，数值为01000。
+ * O_APPEND：在文件末尾追加数据，数值为02000。
+ * O_NONBLOCK：如果以读模式打开文件，则open函数将不会阻塞等待数据可用，数值为04000。
+ * O_SYNC：每次写入文件都会将数据刷新到磁盘上，数值为010000。
+ */
 #define O_RDONLY 00
 #define O_WRONLY 01
 #define O_RDWR 02
+#define O_TRUNC 01000
+#define O_CREAT 0100
 
 /* lseek syscall constants/defines */
 #define SEEK_SET 0

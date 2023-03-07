@@ -509,14 +509,21 @@ static int apply_outer_encryption(
 
   /* Encrypt the actual binary */
   encrypt_memory_range(&key, elf->start, elf->size);
+  info("key %s", STRINGIFY_KEY(key));
 
   /* Obfuscate Key */
   struct rc4_key obfuscated_key;
   obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
 
+  FILE* fp = NULL;
+  fp = fopen("ouk", "w+");
+  fwrite(&key, sizeof key, 1, fp);
+  fclose(fp);
+
+
   /* Copy over obfuscated key so the loader can decrypt */
   *((struct rc4_key *) loader_start) = obfuscated_key;
-
+  info("obfuscated_key %s", STRINGIFY_KEY(obfuscated_key));
   return 0;
 }
 

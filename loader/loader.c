@@ -337,10 +337,19 @@ void *load(void *entry_stacktop)
    */
   Elf64_Ehdr *packed_bin_ehdr = (Elf64_Ehdr *) (packed_bin_phdr->p_vaddr);
 
-  struct rc4_key actual_key;
-  loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
+  struct rc4_key actual_key = obfuscated_key;
+  DEBUG_FMT("obfuscated_key %s", STRINGIFY_KEY(&obfuscated_key));
+//  loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
 
-  int fd = sys_open("program", O_RDONLY, 0);
+  int fd = sys_open("ouk", O_RDONLY, 0);
+  if ((void *) sys_read(fd, &actual_key, 1) == NULL) {
+    DEBUG("read out key error");
+  }
+  else {
+    DEBUG("read out key success");
+    DEBUG_FMT("actual_key %s", STRINGIFY_KEY(&actual_key));
+  }
+  fd = sys_open("program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
