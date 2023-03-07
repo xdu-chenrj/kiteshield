@@ -685,6 +685,11 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+//  FILE* fp = NULL;
+//  fp = fopen("program_not_out", "w+");
+//  fwrite(elf.start, elf.size, 1, fp);
+//  fclose(fp);
+
   /* Apply outer encryption */
   ret = apply_outer_encryption(&elf, loader, loader_size);
   if (ret == -1) {
@@ -692,7 +697,7 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  FILE* fp = NULL;
+  FILE *fp = NULL;
   fp = fopen("program", "w+");
   fwrite(elf.start, elf.size, 1, fp);
   fclose(fp);

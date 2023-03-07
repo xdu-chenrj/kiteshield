@@ -9,6 +9,7 @@
 #include "loader/include/elf_auxv.h"
 #include "loader/include/syscalls.h"
 #include "loader/include/anti_debug.h"
+#include "loader/include/malloc.h"
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1 << PAGE_SHIFT)
@@ -337,25 +338,37 @@ void *load(void *entry_stacktop)
    */
   Elf64_Ehdr *packed_bin_ehdr = (Elf64_Ehdr *) (packed_bin_phdr->p_vaddr);
 
-  struct rc4_key actual_key = obfuscated_key;
-  DEBUG_FMT("obfuscated_key %s", STRINGIFY_KEY(&obfuscated_key));
+  struct rc4_key old_key;
 //  loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
 
   int fd = sys_open("ouk", O_RDONLY, 0);
-  if ((void *) sys_read(fd, &actual_key, 1) == NULL) {
+  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
     DEBUG("read out key error");
   }
   else {
     DEBUG("read out key success");
-    DEBUG_FMT("actual_key %s", STRINGIFY_KEY(&actual_key));
+    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
   }
   fd = sys_open("program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
+//  fd = sys_open("program_1", O_RDWR | O_CREAT | O_TRUNC, 777);
+//  DEBUG_FMT("program_1 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+//  sys_write(fd, (const char *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+//
+//  fd = sys_open("program_2", O_RDWR | O_CREAT | O_TRUNC, 777);
+//  DEBUG_FMT("program_2 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+//  sys_write(fd, (const char *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+
+
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
                      packed_bin_phdr->p_memsz,
-                     &actual_key);
+                     &old_key);
+
+//  fd = sys_open("program_3", O_RDWR | O_CREAT | O_TRUNC, 777);
+//  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+//  sys_close(fd);
 
 
   /* Entry point for ld.so if this is a statically linked binary, otherwise

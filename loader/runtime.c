@@ -851,40 +851,69 @@ void encrypt_memory_range(struct rc4_key *key, void *start, size_t len)
   }
 }
 
-//void external_decryption() {
-//  Elf64_Ehdr *us_ehdr = (Elf64_Ehdr *) LOADER_ADDR;
-//
-//  /* The PHDR in our binary corresponding to the loader (ie. this code) */
-//  Elf64_Phdr *loader_phdr = (Elf64_Phdr *)
-//          (LOADER_ADDR + us_ehdr->e_phoff);
-//
-//  /* The PHDR in our binary corresponding to the encrypted app */
-//  Elf64_Phdr *packed_bin_phdr = loader_phdr + 1;
-//
-//  struct rc4_key actual_key = obfuscated_key;
-//  DEBUG_FMT("obfuscated_key %s", STRINGIFY_KEY(&obfuscated_key));
-//
-//
-//  int fd = sys_open("ouk", O_RDONLY, 0);
-//  if ((void *) sys_read(fd, &actual_key, 1) == NULL) {
-//    DEBUG("read out key error");
-//  }
-//  else {
-//    DEBUG("read out key success");
-//    DEBUG_FMT("actual_key %s", STRINGIFY_KEY(&actual_key));
-//  }
-//  fd = sys_open("program", O_RDONLY, 0);
-//  sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
-//  DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
-//
-//  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
-//                     packed_bin_phdr->p_memsz,
-//                     &actual_key);
-//
-////  fd = sys_open("program_1", O_RDONLY, 0);
-////  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
-//  sys_close(fd);
-//}
+void decrypt_packed_bin(
+        void *packed_bin_start,
+        size_t packed_bin_size,
+        struct rc4_key *key)
+{
+  struct rc4_state rc4;
+  rc4_init(&rc4, key->bytes, sizeof(key->bytes));
+
+  DEBUG_FMT("RC4 decrypting binary with key %s", STRINGIFY_KEY(key));
+
+  unsigned char *curr = packed_bin_start;
+  DEBUG_FMT("debug packed_bin_size %d", packed_bin_size);
+  for (int i = 0; i < packed_bin_size; i++) {
+    *curr = *curr ^ rc4_get_byte(&rc4);
+    curr++;
+  }
+
+  DEBUG_FMT("decrypted %u bytes", packed_bin_size);
+}
+
+void external_decryption(struct rc4_key new_key) {
+  Elf64_Ehdr *us_ehdr = (Elf64_Ehdr *) LOADER_ADDR;
+
+  /* The PHDR in our binary corresponding to the loader (ie. this code) */
+  Elf64_Phdr *loader_phdr = (Elf64_Phdr *)
+          (LOADER_ADDR + us_ehdr->e_phoff);
+
+  /* The PHDR in our binary corresponding to the encrypted app */
+  Elf64_Phdr *packed_bin_phdr = loader_phdr + 1;
+
+  struct rc4_key old_key;
+
+  int fd = sys_open("ouk", O_RDONLY, 0);
+  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
+    DEBUG("read out key error");
+  }
+  else {
+    DEBUG("read out key success");
+    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
+  }
+  fd = sys_open("program", O_RDONLY, 0);
+  sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+  DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
+
+//  fd = sys_open("program_4_before", O_RDWR | O_CREAT | O_TRUNC, 777);
+//  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
+                     packed_bin_phdr->p_memsz,
+                     &old_key);
+
+//  fd = sys_open("program_4", O_RDWR | O_CREAT | O_TRUNC, 777);
+//  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+
+  encrypt_memory_range(&new_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+
+  DEBUG_FMT("new_key %s", STRINGIFY_KEY(&new_key));
+  fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
+  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+
+  sys_close(fd);
+}
+
 
 
 
@@ -963,8 +992,8 @@ void runtime_start(pid_t child_pid)
 
       if (tlist.size == 0) {
         DEBUG("all threads exited, exiting");
-        struct rc4_key key = obfuscated_key;
-//        get_random_bytes(key.bytes, sizeof(key.bytes));
+        struct rc4_key new_key;
+        get_random_bytes(new_key.bytes, sizeof(new_key.bytes));
 
         int fd = sys_open("program", O_RDONLY, 777);
         size_t size = sys_lseek(fd, 0L, SEEK_END);
@@ -973,27 +1002,12 @@ void runtime_start(pid_t child_pid)
         fd = sys_open("program", O_RDONLY, 777);
         sys_read(fd, buf, size);
 
-//        external_decryption();
-
-//        encrypt_memory_range(&key, buf, size);
-        DEBUG_FMT("encrypt buf %p", buf);
-        fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
-        sys_write(fd, buf, size);
-        sys_close(fd);
-
-        fd = sys_open("ouk", O_RDONLY, 777);
-        size = sys_lseek(fd, 0L, SEEK_END);
-        buf = ks_malloc(size);
-        DEBUG_FMT("ouk size %d", size);
-        fd = sys_open("ouk", O_RDONLY, 777);
-        sys_read(fd, buf, size);
-        DEBUG_FMT("%p", buf);
-        sys_close(fd);
+        external_decryption(new_key);
 
         fd = sys_open("ouk", O_RDWR | O_CREAT | O_TRUNC, 777);
-        sys_write(fd, buf, size);
+        sys_write(fd, &new_key, sizeof new_key);
         sys_close(fd);
-        DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&key));
+        DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&new_key));
         sys_exit(0);
       }
       continue;
