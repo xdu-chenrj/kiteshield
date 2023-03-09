@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <time.h>
+
 
 #include "bddisasm.h"
 
@@ -501,11 +503,14 @@ static int apply_inner_encryption(
 static int apply_outer_encryption(
     struct mapped_elf *elf,
     void *loader_start,
-    size_t loader_size)
+    size_t loader_size,
+    uint8_t bytes[])
 {
   struct rc4_key key;
   CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
   info("applying outer encryption with key %s", STRINGIFY_KEY(key));
+
+  memcpy(bytes, key.bytes, sizeof(key.bytes));
 
   /* Encrypt the actual binary */
   encrypt_memory_range(&key, elf->start, elf->size);
@@ -685,13 +690,14 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-//  FILE* fp = NULL;
-//  fp = fopen("program_not_out", "w+");
-//  fwrite(elf.start, elf.size, 1, fp);
-//  fclose(fp);
-
+  uint8_t key[KEY_SIZE];
   /* Apply outer encryption */
-  ret = apply_outer_encryption(&elf, loader, loader_size);
+  ret = apply_outer_encryption(&elf, loader, loader_size, key);
+  printf("key-");
+  for(int i = 0; i < sizeof key; i++) {
+    printf("%x", key[i]);
+  }
+  printf("\n");
   if (ret == -1) {
     err("could not apply outer encryption");
     return -1;
@@ -700,6 +706,10 @@ int main(int argc, char *argv[])
   FILE *fp = NULL;
   fp = fopen("program", "w+");
   fwrite(elf.start, elf.size, 1, fp);
+  fclose(fp);
+
+  fp = fopen("program", "a");
+  fwrite(key, sizeof key, 1, fp);
   fclose(fp);
 
   /* Write output ELF */
