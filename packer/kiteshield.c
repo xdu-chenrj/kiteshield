@@ -504,7 +504,8 @@ static int apply_outer_encryption(
     struct mapped_elf *elf,
     void *loader_start,
     size_t loader_size,
-    uint8_t bytes[])
+    uint8_t bytes[],
+    uint8_t rand[])
 {
   struct rc4_key key;
   CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
@@ -513,7 +514,16 @@ static int apply_outer_encryption(
   memcpy(bytes, key.bytes, sizeof(key.bytes));
 
   /* Encrypt the actual binary */
-  encrypt_memory_range(&key, elf->start + 1, elf->size / 2);
+//  encrypt_memory_range(&key, elf->start + 1, elf->size / 2);
+
+  CK_NEQ_PERROR(get_random_bytes(rand, 8), -1);
+  uint8_t num = ((rand[0] % 4) + 1);
+
+  for(uint8_t i = 0; i < num; i++) {
+    unsigned char s = rand[i + 1] % elf->size;
+    encrypt_memory_range(&key, elf->start + s, (elf->size - s) / 2);
+  }
+
   encrypt_memory_range(&key, elf->start, elf->size);
   info("key %s", STRINGIFY_KEY(key));
 
@@ -709,8 +719,9 @@ int main(int argc, char *argv[])
   }
 
   uint8_t key[KEY_SIZE];
+  uint8_t rand[8];
   /* Apply outer encryption */
-  ret = apply_outer_encryption(&elf, loader, loader_size, key);
+  ret = apply_outer_encryption(&elf, loader, loader_size, key, rand);
   printf("key-");
   for(int i = 0; i < sizeof key; i++) {
     printf("%x", key[i]);
@@ -757,12 +768,13 @@ int main(int argc, char *argv[])
   fwrite(swap_infos, sizeof swap_infos, 1, fp);
   fclose(fp);
 
-//  fp = fopen("swap_infos_1", "w+");
-//  fwrite(swap_infos, sizeof swap_infos, KEY_SIZE, fp);
-//  fclose(fp);
-
   fp = fopen("program", "a");
   fwrite(key, sizeof key, 1, fp);
+  fclose(fp);
+
+  // section num
+  fp = fopen("program", "a");
+  fwrite(rand, sizeof rand, 1, fp);
   fclose(fp);
 
   /* Write output ELF */

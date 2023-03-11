@@ -367,6 +367,9 @@ void *load(void *entry_stacktop)
   struct rc4_key old_key_shuffled;
   sys_read(fd, &old_key_shuffled, sizeof old_key_shuffled);
   DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
+
+  unsigned char rand[8];
+  sys_read(fd, rand, sizeof rand);
   sys_close(fd);
 
   uint8_t shuffled_key[KEY_SIZE];
@@ -394,18 +397,13 @@ void *load(void *entry_stacktop)
 //  DEBUG_FMT("program_2 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 //  sys_write(fd, (const char *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
-  decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + 1),
-                     packed_bin_phdr->p_memsz / 2,
-                     &key);
+  uint8_t num = ((rand[0] % 4) + 1);
+  for(uint8_t i = 0; i < num; i++) {
+    unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
+    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &key);
+  }
 
-
-  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
-                     packed_bin_phdr->p_memsz,
-                     &key);
-
-//  fd = sys_open("program_3", O_RDWR | O_CREAT | O_TRUNC, 777);
-//  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
-//  sys_close(fd);
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,packed_bin_phdr->p_memsz, &key);
 
 
   /* Entry point for ld.so if this is a statically linked binary, otherwise
