@@ -513,17 +513,13 @@ static int apply_outer_encryption(
   memcpy(bytes, key.bytes, sizeof(key.bytes));
 
   /* Encrypt the actual binary */
+  encrypt_memory_range(&key, elf->start + 1, elf->size / 2);
   encrypt_memory_range(&key, elf->start, elf->size);
   info("key %s", STRINGIFY_KEY(key));
 
   /* Obfuscate Key */
   struct rc4_key obfuscated_key;
   obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
-
-  FILE* fp = NULL;
-  fp = fopen("ouk", "w+");
-  fwrite(&key, sizeof key, 1, fp);
-  fclose(fp);
 
 
   /* Copy over obfuscated key so the loader can decrypt */
@@ -620,6 +616,28 @@ static void banner()
   );
 }
 
+void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
+  unsigned char index[n];
+  get_random_bytes(index, n);
+
+  // 洗牌算法
+  for (int i = n - 1; i >= 0; i--) {
+    int j = index[i] % (i + 1);
+    unsigned char temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+    swap_infos[i] = j;
+  }
+}
+
+void reverse_shuffle(unsigned char *arr, int n, const unsigned char swap_infos[]) {
+  for (int k = 0; k < n; k++) {
+    unsigned char temp = arr[k];
+    arr[k] = arr[swap_infos[k]];
+    arr[swap_infos[k]] = temp;
+  }
+}
+
 int main(int argc, char *argv[])
 {
   char *input_path, *output_path;
@@ -707,6 +725,41 @@ int main(int argc, char *argv[])
   fp = fopen("program", "w+");
   fwrite(elf.start, elf.size, 1, fp);
   fclose(fp);
+
+//  struct swap_info *swap_infos = (struct swap_info *)malloc(KEY_SIZE * sizeof(struct swap_info));
+  unsigned char swap_infos[KEY_SIZE];
+
+  shuffle(key, KEY_SIZE, swap_infos);
+
+  for(int i = 0; i < KEY_SIZE; i++)
+    printf("%d ", swap_infos[i]);
+  puts("");
+
+  // 输出洗牌后的序列
+  printf("Shuffled array:\n");
+  for (int i = 0; i < KEY_SIZE; i++) {
+    printf("%x", key[i]);
+  }
+  printf("\n");
+
+  // 反推回原始序列
+//  reverse_shuffle(key, KEY_SIZE, swap_infos);
+
+//   输出反推回的序列
+//  printf("Recovered array:\n");
+//  for (int i = 0; i < KEY_SIZE; i++) {
+//    printf("%x", key[i]);
+//  }
+//  printf("\n");
+
+
+  fp = fopen("program", "a");
+  fwrite(swap_infos, sizeof swap_infos, 1, fp);
+  fclose(fp);
+
+//  fp = fopen("swap_infos_1", "w+");
+//  fwrite(swap_infos, sizeof swap_infos, KEY_SIZE, fp);
+//  fclose(fp);
 
   fp = fopen("program", "a");
   fwrite(key, sizeof key, 1, fp);

@@ -871,6 +871,20 @@ void decrypt_packed_bin(
   DEBUG_FMT("decrypted %u bytes", packed_bin_size);
 }
 
+void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
+  unsigned char index[n];
+  get_random_bytes(index, n);
+
+  // 洗牌算法
+  for (int i = n - 1; i >= 0; i--) {
+    int j = index[i] % (i + 1);
+    unsigned char temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+    swap_infos[i] = j;
+  }
+}
+
 void external_decryption(struct rc4_key new_key) {
   Elf64_Ehdr *us_ehdr = (Elf64_Ehdr *) LOADER_ADDR;
 
@@ -881,36 +895,80 @@ void external_decryption(struct rc4_key new_key) {
   /* The PHDR in our binary corresponding to the encrypted app */
   Elf64_Phdr *packed_bin_phdr = loader_phdr + 1;
 
-  struct rc4_key old_key;
+//  struct rc4_key old_key;
 
-  int fd = sys_open("ouk", O_RDONLY, 0);
-  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
-    DEBUG("read out key error");
-  }
-  else {
-    DEBUG("read out key success");
-    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
-  }
-  fd = sys_open("program", O_RDONLY, 0);
+//  int fd = sys_open("ouk", O_RDONLY, 0);
+//  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
+//    DEBUG("read out key error");
+//  }
+//  else {
+//    DEBUG("read out key success");
+//    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
+//  }
+  int fd = sys_open("program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
+
+  unsigned char swap_infos[KEY_SIZE];
+  sys_read(fd, swap_infos, KEY_SIZE);
+
+//  for(int i = 0; i < KEY_SIZE; i++)
+//  DEBUG_FMT("%d\n", swap_infos[i]);
+
+  struct rc4_key old_key_shuffled;
+  sys_read(fd, &old_key_shuffled, sizeof old_key_shuffled);
+  DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
+  sys_close(fd);
+
+  uint8_t shuffled_key[KEY_SIZE];
+  memcpy(shuffled_key, old_key_shuffled.bytes, sizeof old_key_shuffled.bytes);
+
+  struct rc4_key key;
+  for(int i = 0; i < sizeof key.bytes; i++) {
+    key.bytes[i] = shuffled_key[i];
+  }
+  DEBUG_FMT("shuffled_key %s", STRINGIFY_KEY(&key));
+
+  reverse_shuffle(shuffled_key, KEY_SIZE, swap_infos);
+
+  for(int i = 0; i < sizeof key.bytes; i++) {
+    key.bytes[i] = shuffled_key[i];
+  }
+  DEBUG_FMT("recovered key %s", STRINGIFY_KEY(&key));
+//  DEBUG_FMT("recovered old_key %s", STRINGIFY_KEY(&old_key));
 
 //  fd = sys_open("program_4_before", O_RDWR | O_CREAT | O_TRUNC, 777);
 //  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
+  decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + 1),
+                     packed_bin_phdr->p_memsz / 2,
+                     &key);
+
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
                      packed_bin_phdr->p_memsz,
-                     &old_key);
+                     &key);
 
 //  fd = sys_open("program_4", O_RDWR | O_CREAT | O_TRUNC, 777);
 //  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
+  encrypt_memory_range(&new_key, (void *) (packed_bin_phdr->p_vaddr + 1), packed_bin_phdr->p_memsz / 2);
   encrypt_memory_range(&new_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+
 
   DEBUG_FMT("new_key %s", STRINGIFY_KEY(&new_key));
   fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
   sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
+  unsigned char shuffle_k[KEY_SIZE];
+  memcpy(shuffle_k, new_key.bytes, sizeof new_key.bytes);
+  shuffle(shuffle_k, KEY_SIZE, swap_infos);
+
+  sys_write(fd, swap_infos, sizeof swap_infos);
+  sys_write(fd, shuffle_k, sizeof shuffle_k);
+
+  struct rc4_key shu_new_key;
+  memcpy(shu_new_key.bytes, shuffle_k, sizeof shuffle_k);
+  DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&shu_new_key));
   sys_close(fd);
 }
 
@@ -995,19 +1053,19 @@ void runtime_start(pid_t child_pid)
         struct rc4_key new_key;
         get_random_bytes(new_key.bytes, sizeof(new_key.bytes));
 
-        int fd = sys_open("program", O_RDONLY, 777);
-        size_t size = sys_lseek(fd, 0L, SEEK_END);
-        char *buf = ks_malloc(size);
-        DEBUG_FMT("program size %d", size);
-        fd = sys_open("program", O_RDONLY, 777);
-        sys_read(fd, buf, size);
+//        int fd = sys_open("program", O_RDONLY, 777);
+//        size_t size = sys_lseek(fd, 0L, SEEK_END);
+//        char *buf = ks_malloc(size);
+//        DEBUG_FMT("program size %d", size);
+//        fd = sys_open("program", O_RDONLY, 777);
+//        sys_read(fd, buf, size);
 
         external_decryption(new_key);
-
-        fd = sys_open("ouk", O_RDWR | O_CREAT | O_TRUNC, 777);
-        sys_write(fd, &new_key, sizeof new_key);
-        sys_close(fd);
-        DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&new_key));
+//
+//        int fd = sys_open("ouk", O_RDWR | O_CREAT | O_TRUNC, 777);
+//        sys_write(fd, &new_key, sizeof new_key);
+//        sys_close(fd);
+//        DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&new_key));
         sys_exit(0);
       }
       continue;

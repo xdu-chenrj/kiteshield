@@ -305,6 +305,14 @@ void loader_outer_key_deobfuscate(
   obf_deobf_outer_key(old_key, new_key, loader_start, loader_size);
 }
 
+void reverse_shuffle(unsigned char *arr, int n, const unsigned char swap_infos[]) {
+  for (int k = 0; k < n; k++) {
+    unsigned char temp = arr[k];
+    arr[k] = arr[swap_infos[k]];
+    arr[swap_infos[k]] = temp;
+  }
+}
+
 /* Load the packed binary, returns the address to hand control to when done */
 void *load(void *entry_stacktop)
 {
@@ -338,20 +346,45 @@ void *load(void *entry_stacktop)
    */
   Elf64_Ehdr *packed_bin_ehdr = (Elf64_Ehdr *) (packed_bin_phdr->p_vaddr);
 
-  struct rc4_key old_key;
+//  struct rc4_key old_key;
 //  loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
 
-  int fd = sys_open("ouk", O_RDONLY, 0);
-  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
-    DEBUG("read out key error");
-  }
-  else {
-    DEBUG("read out key success");
-    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
-  }
-  fd = sys_open("program", O_RDONLY, 0);
+//  int fd = sys_open("ouk", O_RDONLY, 0);
+//  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
+//    DEBUG("read out key error");
+//  }
+//  else {
+//    DEBUG("read out key success");
+//    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
+//  }
+  int fd = sys_open("program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
+
+  unsigned char swap_infos[KEY_SIZE];
+  sys_read(fd, swap_infos, KEY_SIZE);
+
+  struct rc4_key old_key_shuffled;
+  sys_read(fd, &old_key_shuffled, sizeof old_key_shuffled);
+  DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
+  sys_close(fd);
+
+  uint8_t shuffled_key[KEY_SIZE];
+  memcpy(shuffled_key, old_key_shuffled.bytes, sizeof old_key_shuffled.bytes);
+
+  struct rc4_key key;
+  for(int i = 0; i < sizeof key.bytes; i++) {
+    key.bytes[i] = shuffled_key[i];
+  }
+  DEBUG_FMT("shuffled_key %s", STRINGIFY_KEY(&key));
+
+  reverse_shuffle(shuffled_key, KEY_SIZE, swap_infos);
+
+  for(int i = 0; i < sizeof key.bytes; i++) {
+    key.bytes[i] = shuffled_key[i];
+  }
+  DEBUG_FMT("recovered key %s", STRINGIFY_KEY(&key));
+//  DEBUG_FMT("recovered old_key %s", STRINGIFY_KEY(&old_key));
 
 //  fd = sys_open("program_1", O_RDWR | O_CREAT | O_TRUNC, 777);
 //  DEBUG_FMT("program_1 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
@@ -361,10 +394,14 @@ void *load(void *entry_stacktop)
 //  DEBUG_FMT("program_2 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 //  sys_write(fd, (const char *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
+  decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + 1),
+                     packed_bin_phdr->p_memsz / 2,
+                     &key);
+
 
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
                      packed_bin_phdr->p_memsz,
-                     &old_key);
+                     &key);
 
 //  fd = sys_open("program_3", O_RDWR | O_CREAT | O_TRUNC, 777);
 //  sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
