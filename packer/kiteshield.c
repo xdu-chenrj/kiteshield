@@ -40,6 +40,155 @@
 
 static int log_verbose = 0;
 
+#include <strings.h>
+#include <termios.h>
+#include <malloc.h>
+
+static int get_random_bytes_v1(void *buf, size_t len) {
+  FILE *f = fopen("/dev/urandom", "r");
+  fread(buf, len, 1, f);
+  fclose(f);
+  return 0;
+}
+
+unsigned short int CRC16_Check(const unsigned char *data, unsigned char len) {
+  unsigned short int CRC16 = 0xFFFF;
+  for (unsigned char i = 0; i < len; i++) {
+
+    CRC16 ^= data[i];
+    for (unsigned char j = 0; j < 8; j++) {
+      unsigned char state = CRC16 & 0x01;
+      CRC16 >>= 1;
+      if (state) {
+        CRC16 ^= 0xA001;
+      }
+    }
+  }
+  return CRC16;
+}
+
+typedef struct termios termios_t;
+
+typedef struct serial_data {
+    unsigned char data_buf[39];
+    int ser_fd;
+} ser_data;
+
+unsigned char serial_key[16];
+
+void send(ser_data snd) {
+  ssize_t ret = write(snd.ser_fd, snd.data_buf, sizeof snd.data_buf);
+  if (ret > 0) {
+    printf("send success.\n");
+  } else {
+    printf("send error!\n");
+  }
+}
+
+
+void receive(ser_data rec) {
+  unsigned char res[39];
+  int index = 0;
+  while (1) {
+    unsigned char buf[39];
+    ssize_t ret = read(rec.ser_fd, buf, 39);
+    if (ret > 0) {
+      printf("receive success, receive size is %zd, data is\n", ret);
+      for (int i = 0; i < ret; i++) {
+        res[index++] = buf[i];
+        printf("%02x", buf[i]);
+      }
+      printf("\n");
+    }
+    if (index == 39) {
+      break;
+    }
+  }
+  for (int i = 0; i < 39; i++) printf("%02x", res[i]);
+  printf("\n");
+  for (int i = 4, j = 0; i < 4 + 16; i++, j++) {
+    serial_key[j] = res[i];
+  }
+}
+
+
+int common(unsigned char temp[]) {
+  // 进行串口参数设置
+  termios_t *ter_s = malloc(sizeof(*ter_s));
+  // 不成为控制终端程序，不受其他程序输出输出影响
+  char *device = "/dev/ttyUSB0";
+  int fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+  if (fd < 0) {
+    printf("%s open failed\r\n", device);
+    return -1;
+  } else {
+    printf("connection device /dev/ttyUSB0 successful\n");
+  }
+  bzero(ter_s, sizeof(*ter_s));
+
+  ter_s->c_cflag |= CLOCAL | CREAD; //激活本地连接与接受使能
+  ter_s->c_cflag &= ~CSIZE;//失能数据位屏蔽
+  ter_s->c_cflag |= CS8;//8位数据位
+  ter_s->c_cflag &= ~CSTOPB;//1位停止位
+  ter_s->c_cflag &= ~PARENB;//无校验位
+  ter_s->c_cc[VTIME] = 0;
+  ter_s->c_cc[VMIN] = 0;
+  /*
+      1 VMIN> 0 && VTIME> 0
+      VMIN为最少读取的字符数，当读取到一个字符后，会启动一个定时器，在定时器超时事前，如果已经读取到了VMIN个字符，则read返回VMIN个字符。如果在接收到VMIN个字符之前，定时器已经超时，则read返回已读取到的字符，注意这个定时器会在每次读取到一个字符后重新启用，即重新开始计时，而且是读取到第一个字节后才启用，也就是说超时的情况下，至少读取到一个字节数据。
+      2 VMIN > 0 && VTIME== 0
+      在只有读取到VMIN个字符时，read才返回，可能造成read被永久阻塞。
+      3 VMIN == 0 && VTIME> 0
+      和第一种情况稍有不同，在接收到一个字节时或者定时器超时时，read返回。如果是超时这种情况，read返回值是0。
+      4 VMIN == 0 && VTIME== 0
+      这种情况下read总是立即就返回，即不会被阻塞。----by 解释粘贴自博客园
+  */
+  cfsetispeed(ter_s, B115200);//设置输入波特率
+  cfsetospeed(ter_s, B115200);//设置输出波特率
+  tcflush(fd, TCIFLUSH);//刷清未处理的输入和/或输出
+  if (tcsetattr(fd, TCSANOW, ter_s) != 0) {
+    printf("com set error!\r\n");
+  }
+
+  unsigned char rand[32];
+  get_random_bytes_v1(rand, sizeof rand);
+  temp[0] = 0xA5;
+  temp[1] = 0x5A;
+  temp[2] = 0x20;
+  temp[3] = 0x00;
+  for (int i = 4; i < 36; i++) temp[i] = rand[i - 4] % 2;
+
+  unsigned short int CRC16re = CRC16_Check(temp, 4 + 32);
+  printf("%x\n", CRC16re);
+  printf("%02x\n", CRC16re >> 8);
+  int sum = 0;
+  for(int i = 7; i >=0; i--) {
+    sum = sum * 2 + (CRC16re >> i & 1);
+  }
+  printf("%02x\n", sum);
+
+  temp[36] = CRC16re >> 8;
+  temp[37] = sum;
+  temp[38] = 0xFF;
+
+  printf("send data\n");
+  for (int i = 0; i < 39; i++) printf("%02x", temp[i]);
+  printf("\n");
+
+
+  ser_data snd_data;
+  ser_data rec_data;
+  snd_data.ser_fd = fd;
+  rec_data.ser_fd = fd;
+
+  memcpy(snd_data.data_buf, temp, SERIAL_SIZE);
+
+  send(snd_data);
+  receive(rec_data);
+  free(ter_s);
+  return 0;
+}
+
 /* Needs to be defined for bddisasm */
 int nd_vsnprintf_s(
     char *buffer,
@@ -193,11 +342,15 @@ static int produce_output_elf(
 
 static int get_random_bytes(void *buf, size_t len)
 {
-  FILE *f;
-  CK_NEQ_PERROR(f = fopen("/dev/urandom", "r"), NULL);
-  CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
-  CK_NEQ_PERROR(fclose(f), EOF);
-
+  unsigned char *p = (unsigned char *) buf;
+  int index = 0;
+  for(int i = 0; i < 16; i++) {
+    p[index++] = serial_key[i];
+  }
+//  FILE *f;
+//  CK_NEQ_PERROR(f = fopen("/dev/urandom", "r"), NULL);
+//  CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
+//  CK_NEQ_PERROR(fclose(f), EOF);
   return 0;
 }
 
@@ -504,19 +657,14 @@ static int apply_outer_encryption(
     struct mapped_elf *elf,
     void *loader_start,
     size_t loader_size,
-    uint8_t bytes[],
     uint8_t rand[])
 {
   struct rc4_key key;
   CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
   info("applying outer encryption with key %s", STRINGIFY_KEY(key));
 
-  memcpy(bytes, key.bytes, sizeof(key.bytes));
-
   /* Encrypt the actual binary */
-//  encrypt_memory_range(&key, elf->start + 1, elf->size / 2);
-
-  CK_NEQ_PERROR(get_random_bytes(rand, 8), -1);
+  CK_NEQ_PERROR(get_random_bytes_v1(rand, 8), -1);
   uint8_t num = ((rand[0] % 4) + 1);
 
   for(uint8_t i = 0; i < num; i++) {
@@ -655,6 +803,10 @@ int main(int argc, char *argv[])
   int c;
   int ret;
 
+  unsigned char serial_send[SERIAL_SIZE];
+  int r = common(serial_send);
+  if(r == -1) return 0;
+
   while ((c = getopt (argc, argv, "nv")) != -1) {
     switch (c) {
     case 'n':
@@ -717,15 +869,27 @@ int main(int argc, char *argv[])
     err("could not strip binary");
     return -1;
   }
+  printf("before outer_encryption:\n");
+  for (int i = 0; i < SERIAL_SIZE; i++) {
+    printf("%02x", serial_send[i]);
+  }
+  printf("\n");
 
-  uint8_t key[KEY_SIZE];
+//  uint8_t key[KEY_SIZE];
   uint8_t rand[8];
   /* Apply outer encryption */
-  ret = apply_outer_encryption(&elf, loader, loader_size, key, rand);
-  printf("key-");
-  for(int i = 0; i < sizeof key; i++) {
-    printf("%x", key[i]);
+  ret = apply_outer_encryption(&elf, loader, loader_size, rand);
+
+  printf("after outer_encryption:\n");
+  for (int i = 0; i < SERIAL_SIZE; i++) {
+    printf("%02x", serial_send[i]);
   }
+  printf("\n");
+
+//  printf("key-");
+//  for(int i = 0; i < sizeof key; i++) {
+//    printf("%x", key[i]);
+//  }
   printf("\n");
   if (ret == -1) {
     err("could not apply outer encryption");
@@ -737,31 +901,38 @@ int main(int argc, char *argv[])
   fwrite(elf.start, elf.size, 1, fp);
   fclose(fp);
 
-//  struct swap_info *swap_infos = (struct swap_info *)malloc(KEY_SIZE * sizeof(struct swap_info));
-  unsigned char swap_infos[KEY_SIZE];
+  unsigned char swap_infos[SERIAL_SIZE];
 
-  shuffle(key, KEY_SIZE, swap_infos);
+  printf("before shuffled array2:\n");
+  for (int i = 0; i < SERIAL_SIZE; i++) {
+    printf("%02x", serial_send[i]);
+  }
+  printf("\n");
 
-  for(int i = 0; i < KEY_SIZE; i++)
+  shuffle(serial_send, SERIAL_SIZE, swap_infos);
+
+  for(int i = 0; i < SERIAL_SIZE; i++)
     printf("%d ", swap_infos[i]);
   puts("");
 
   // 输出洗牌后的序列
-  printf("Shuffled array:\n");
-  for (int i = 0; i < KEY_SIZE; i++) {
-    printf("%x", key[i]);
+  printf("shuffled array:\n");
+  for (int i = 0; i < SERIAL_SIZE; i++) {
+    printf("%02x", serial_send[i]);
   }
   printf("\n");
 
   // 反推回原始序列
-//  reverse_shuffle(key, KEY_SIZE, swap_infos);
+  unsigned char serial_send_back[SERIAL_SIZE];
+  memcpy(serial_send_back, serial_send, sizeof serial_send);
+  reverse_shuffle(serial_send_back, SERIAL_SIZE, swap_infos);
 
 //   输出反推回的序列
-//  printf("Recovered array:\n");
-//  for (int i = 0; i < KEY_SIZE; i++) {
-//    printf("%x", key[i]);
-//  }
-//  printf("\n");
+  printf("Recovered array:\n");
+  for (int i = 0; i < SERIAL_SIZE; i++) {
+    printf("%02x", serial_send_back[i]);
+  }
+  printf("\n");
 
 
   fp = fopen("program", "a");
@@ -769,7 +940,7 @@ int main(int argc, char *argv[])
   fclose(fp);
 
   fp = fopen("program", "a");
-  fwrite(key, sizeof key, 1, fp);
+  fwrite(serial_send, sizeof serial_send, 1, fp);
   fclose(fp);
 
   // section num

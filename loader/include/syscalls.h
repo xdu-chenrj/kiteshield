@@ -25,19 +25,66 @@
 #define PROT_EXEC 0x4
 #define PROT_NONE 0x0
 
-/* open syscall constants/defines */
+/* Serial communication open func constant defines */
+#define O_RDWR        02
+#define O_NOCTTY    0400  /* Not fcntl.  */
+#define O_NDELAY O_NONBLOCK
+#define O_NONBLOCK   04000
 
-/**
- * O_RDONLY：只读模式打开文件，数值为0。
- * O_WRONLY：只写模式打开文件，数值为1。
- * O_RDWR：读写模式打开文件，数值为2。
- * O_CREAT：如果文件不存在，则创建它，数值为0100。
- * O_EXCL：如果与O_CREAT一起使用，并且文件已经存在，则open函数将失败，数值为0200。
- * O_TRUNC：如果文件已经存在，则截断文件为0长度，数值为01000。
- * O_APPEND：在文件末尾追加数据，数值为02000。
- * O_NONBLOCK：如果以读模式打开文件，则open函数将不会阻塞等待数据可用，数值为04000。
- * O_SYNC：每次写入文件都会将数据刷新到磁盘上，数值为010000。
- */
+/* c_cflag bits.  */
+#define CSIZE	0000060
+#define   CS5	0000000
+#define   CS6	0000020
+#define   CS7	0000040
+#define   CS8	0000060
+#define CSTOPB	0000100
+#define CREAD	0000200
+#define PARENB	0000400
+#define PARODD	0001000
+#define HUPCL	0002000
+#define CLOCAL	0004000
+
+
+/* c_cc characters */
+#define VINTR 0
+#define VQUIT 1
+#define VERASE 2
+#define VKILL 3
+#define VEOF 4
+#define VTIME 5
+#define VMIN 6
+#define VSWTC 7
+#define VSTART 8
+#define VSTOP 9
+#define VSUSP 10
+#define VEOL 11
+#define VREPRINT 12
+#define VDISCARD 13
+#define VWERASE 14
+#define VLNEXT 15
+#define VEOL2 16
+
+
+/* Extra output baud rates (not in POSIX).  */
+#define  B57600    0010001
+#define  B115200   0010002
+#define  B230400   0010003
+#define  B460800   0010004
+#define  B500000   0010005
+#define  B576000   0010006
+#define  B921600   0010007
+#define  B1000000  0010010
+#define  B1152000  0010011
+#define  B1500000  0010012
+#define  B2000000  0010013
+#define  B2500000  0010014
+#define  B3000000  0010015
+#define  B3500000  0010016
+#define  B4000000  0010017
+#define __MAX_BAUD B4000000
+
+
+/* open syscall constants/defines */
 #define O_RDONLY 00
 #define O_WRONLY 01
 #define O_RDWR 02

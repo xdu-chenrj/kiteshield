@@ -10,6 +10,7 @@
 #include "loader/include/syscalls.h"
 #include "loader/include/anti_debug.h"
 #include "loader/include/malloc.h"
+#include "loader/include/termios-struct.h"
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1 << PAGE_SHIFT)
@@ -18,6 +19,94 @@
 #define PAGE_ALIGN_DOWN(ptr) ((ptr) & PAGE_MASK)
 #define PAGE_ALIGN_UP(ptr) ((((ptr) - 1) & PAGE_MASK) + PAGE_SIZE)
 #define PAGE_OFFSET(ptr) ((ptr) & ~(PAGE_MASK))
+
+typedef struct termios termios_t;
+typedef struct serial_data {
+    unsigned char data_buf[39];
+    int ser_fd;
+} ser_data;
+unsigned char serial_key[16];
+
+unsigned short int CRC16_Check(const unsigned char *data, unsigned char len) {
+  unsigned short int CRC16 = 0xFFFF;
+  for (unsigned char i = 0; i < len; i++) {
+
+    CRC16 ^= data[i];
+    for (unsigned char j = 0; j < 8; j++) {
+      unsigned char state = CRC16 & 0x01;
+      CRC16 >>= 1;
+      if (state) {
+        CRC16 ^= 0xA001;
+      }
+    }
+  }
+  return CRC16;
+}
+
+void send(ser_data snd) {
+  ssize_t ret = sys_write(snd.ser_fd, snd.data_buf, sizeof snd.data_buf);
+  if (ret > 0) {
+    DEBUG("send success.");
+  } else {
+    DEBUG("send error!");
+  }
+}
+
+void receive(ser_data rec) {
+  unsigned char res[39];
+  int index = 0;
+  while (1) {
+    unsigned char buf[39];
+    ssize_t ret = sys_read(rec.ser_fd, buf, 39);
+    if (ret > 0) {
+      DEBUG_FMT("receive success, receive size is %d", ret);
+      for (int i = 0; i < ret; i++) {
+        res[index++] = buf[i];
+      }
+    }
+    if (index == 39) {
+      break;
+    }
+  }
+  for (int i = 4, j = 0; i < 4 + 16; i++, j++) {
+    serial_key[j] = res[i];
+  }
+}
+
+int common(uint8_t serial_send[SERIAL_SIZE]) {
+  // 进行串口参数设置
+  ks_malloc_init();
+  termios_t *ter_s = ks_malloc(sizeof(ter_s));
+  // 不成为控制终端程序，不受其他程序输出输出影响
+  char *device = "/dev/ttyUSB0";
+  int fd = sys_open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+  if (fd < 0) {
+    DEBUG_FMT("%s open failed\r\n", device);
+    return -1;
+  } else {
+    DEBUG("connection device /dev/ttyUSB0 successful");
+  }
+
+  ter_s->c_cflag |= CLOCAL | CREAD; //激活本地连接与接受使能
+  ter_s->c_cflag &= ~CSIZE;//失能数据位屏蔽
+  ter_s->c_cflag |= CS8;//8位数据位
+  ter_s->c_cflag &= ~CSTOPB;//1位停止位
+  ter_s->c_cflag &= ~PARENB;//无校验位
+  ter_s->c_cc[VTIME] = 0;
+  ter_s->c_cc[VMIN] = 0;
+  ter_s->c_ispeed = B115200;
+  ter_s->c_ospeed = B115200;
+
+  ser_data snd_data;
+  ser_data rec_data;
+  snd_data.ser_fd = fd;
+  rec_data.ser_fd = fd;
+
+  memcpy(snd_data.data_buf, serial_send, SERIAL_SIZE);
+  send(snd_data);
+  receive(rec_data);
+  return 0;
+}
 
 struct rc4_key obfuscated_key __attribute__((section(".key")));
 
@@ -346,47 +435,43 @@ void *load(void *entry_stacktop)
    */
   Elf64_Ehdr *packed_bin_ehdr = (Elf64_Ehdr *) (packed_bin_phdr->p_vaddr);
 
-//  struct rc4_key old_key;
-//  loader_outer_key_deobfuscate(&obfuscated_key, &actual_key);
-
-//  int fd = sys_open("ouk", O_RDONLY, 0);
-//  if ((void *) sys_read(fd, &old_key, sizeof old_key) == NULL) {
-//    DEBUG("read out key error");
-//  }
-//  else {
-//    DEBUG("read out key success");
-//    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
-//  }
   int fd = sys_open("program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
-  unsigned char swap_infos[KEY_SIZE];
-  sys_read(fd, swap_infos, KEY_SIZE);
+  unsigned char swap_infos[SERIAL_SIZE];
+  sys_read(fd, swap_infos, SERIAL_SIZE);
 
-  struct rc4_key old_key_shuffled;
-  sys_read(fd, &old_key_shuffled, sizeof old_key_shuffled);
-  DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
+  unsigned char old_serial_shuffled[SERIAL_SIZE];
+  sys_read(fd, &old_serial_shuffled, sizeof old_serial_shuffled);
+//  DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
 
   unsigned char rand[8];
   sys_read(fd, rand, sizeof rand);
   sys_close(fd);
 
-  uint8_t shuffled_key[KEY_SIZE];
-  memcpy(shuffled_key, old_key_shuffled.bytes, sizeof old_key_shuffled.bytes);
+//  uint8_t shuffled_key[KEY_SIZE];
+//  memcpy(shuffled_key, old_serial_shuffled.bytes, sizeof old_serial_shuffled.bytes);
+//
+//  struct rc4_key key;
+//  for(int i = 0; i < sizeof key.bytes; i++) {
+//    key.bytes[i] = shuffled_key[i];
+//  }
+//  DEBUG_FMT("shuffled_key %s", STRINGIFY_KEY(&key));
 
-  struct rc4_key key;
-  for(int i = 0; i < sizeof key.bytes; i++) {
-    key.bytes[i] = shuffled_key[i];
+  reverse_shuffle(old_serial_shuffled, SERIAL_SIZE, swap_infos);
+
+//  for(int i = 0; i < sizeof key.bytes; i++) {
+//    key.bytes[i] = shuffled_key[i];
+//  }
+//  DEBUG_FMT("recovered key %s", STRINGIFY_KEY(&key));
+
+  common(old_serial_shuffled);
+  struct rc4_key actual_key;
+
+  for(int i = 0; i < KEY_SIZE; i++) {
+    actual_key.bytes[i] = serial_key[i];
   }
-  DEBUG_FMT("shuffled_key %s", STRINGIFY_KEY(&key));
-
-  reverse_shuffle(shuffled_key, KEY_SIZE, swap_infos);
-
-  for(int i = 0; i < sizeof key.bytes; i++) {
-    key.bytes[i] = shuffled_key[i];
-  }
-  DEBUG_FMT("recovered key %s", STRINGIFY_KEY(&key));
 //  DEBUG_FMT("recovered old_key %s", STRINGIFY_KEY(&old_key));
 
 //  fd = sys_open("program_1", O_RDWR | O_CREAT | O_TRUNC, 777);
@@ -400,10 +485,10 @@ void *load(void *entry_stacktop)
   uint8_t num = ((rand[0] % 4) + 1);
   for(uint8_t i = 0; i < num; i++) {
     unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
-    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &key);
+    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &actual_key);
   }
 
-  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,packed_bin_phdr->p_memsz, &key);
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,packed_bin_phdr->p_memsz, &actual_key);
 
 
   /* Entry point for ld.so if this is a statically linked binary, otherwise

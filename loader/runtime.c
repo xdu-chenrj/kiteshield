@@ -15,6 +15,7 @@
 #include "loader/include/malloc.h"
 #include "loader/include/anti_debug.h"
 #include "loader/include/loader.h"
+#include "loader/include/termios-struct.h"
 
 /* See PTRACE_SETOPTIONS in ptrace manpage */
 #define PTRACE_EVENT_PRESENT(wstatus, event) \
@@ -46,6 +47,69 @@
   } while (0)
 
 #define FCN_REFCNT(thread, fcn) ((thread)->as->fcn_ref_arr[(fcn)->id])
+
+static int get_random_bytes_v1(void *buf, size_t len)
+{
+  int fd = sys_open("/dev/urandom", O_RDONLY, 0);
+  sys_read(fd, buf, len);
+  sys_close(fd);
+  return 0;
+}
+
+
+int common_new_serial(unsigned char serial_send[SERIAL_SIZE]) {
+  // 进行串口参数设置
+  termios_t *ter_s = ks_malloc(sizeof(ter_s));
+  // 不成为控制终端程序，不受其他程序输出输出影响
+  char *device = "/dev/ttyUSB0";
+  int fd = sys_open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+  if (fd < 0) {
+    DEBUG_FMT("%s open failed\r\n", device);
+    return -1;
+  } else {
+    DEBUG("connection device /dev/ttyUSB0 successful");
+  }
+
+  ter_s->c_cflag |= CLOCAL | CREAD; //激活本地连接与接受使能
+  ter_s->c_cflag &= ~CSIZE;//失能数据位屏蔽
+  ter_s->c_cflag |= CS8;//8位数据位
+  ter_s->c_cflag &= ~CSTOPB;//1位停止位
+  ter_s->c_cflag &= ~PARENB;//无校验位
+  ter_s->c_cc[VTIME] = 0;
+  ter_s->c_cc[VMIN] = 0;
+  ter_s->c_ispeed = B115200;
+  ter_s->c_ospeed = B115200;
+
+  unsigned char rand[32];
+  get_random_bytes_v1(rand, sizeof rand);
+  serial_send[0] = 0xA5;
+  serial_send[1] = 0x5A;
+  serial_send[2] = 0x20;
+  serial_send[3] = 0x00;
+  for (int i = 4; i < 36; i++) serial_send[i] = rand[i - 4] % 2;
+
+  unsigned short int CRC16re = CRC16_Check(serial_send, 4 + 32);
+
+  int sum = 0;
+  for(int i = 7; i >=0; i--) {
+    sum = sum * 2 + (CRC16re >> i & 1);
+  }
+
+  serial_send[36] = CRC16re >> 8;
+  serial_send[37] = sum;
+  serial_send[38] = 0xFF;
+
+  ser_data snd_data;
+  ser_data rec_data;
+  snd_data.ser_fd = fd;
+  rec_data.ser_fd = fd;
+
+  memcpy(snd_data.data_buf, serial_send, SERIAL_SIZE);
+  send(snd_data);
+  receive(rec_data);
+  return 0;
+}
+
 
 struct runtime_info rt_info __attribute__((section(".rt_info")));
 
@@ -310,14 +374,6 @@ static void handle_fcn_entry(
   FCN_ENTER(thread, fcn);
 }
 
-static int get_random_bytes(void *buf, size_t len)
-{
-    int fd = sys_open("/dev/urandom", O_RDONLY, 0);
-    sys_read(fd, buf, len);
-    sys_close(fd);
-    return 0;
-}
-
 static void handle_fcn_exit(
     struct thread *thread,
     struct thread_list *tlist,
@@ -348,7 +404,7 @@ static void handle_fcn_exit(
 
     /* Encrypt the function we're leaving provided no other thread is in it */
     if (FCN_REFCNT(thread, prev_fcn) == 0) {
-        get_random_bytes(prev_fcn->key.bytes, sizeof(prev_fcn->key.bytes));
+        get_random_bytes_v1(prev_fcn->key.bytes, sizeof(prev_fcn->key.bytes));
         DEBUG_FMT("tid %d: no other threads were executing in %s, encrypting with key %s",
                   thread->tid, prev_fcn->name, STRINGIFY_KEY(&prev_fcn->key));
 
@@ -873,7 +929,7 @@ void decrypt_packed_bin(
 
 void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
   unsigned char index[n];
-  get_random_bytes(index, n);
+  get_random_bytes_v1(index, n);
 
   // 洗牌算法
   for (int i = n - 1; i >= 0; i--) {
@@ -885,7 +941,7 @@ void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
   }
 }
 
-void external_decryption(struct rc4_key new_key) {
+void external_decryption() {
   Elf64_Ehdr *us_ehdr = (Elf64_Ehdr *) LOADER_ADDR;
 
   /* The PHDR in our binary corresponding to the loader (ie. this code) */
@@ -899,70 +955,64 @@ void external_decryption(struct rc4_key new_key) {
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
-  unsigned char swap_infos[KEY_SIZE];
-  sys_read(fd, swap_infos, KEY_SIZE);
+  unsigned char swap_infos[SERIAL_SIZE];
+  sys_read(fd, swap_infos, SERIAL_SIZE);
 
-
-  struct rc4_key old_key_shuffled;
-  sys_read(fd, &old_key_shuffled, sizeof old_key_shuffled);
-  DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
+  unsigned char old_serial_shuffled[SERIAL_SIZE];
+  sys_read(fd, &old_serial_shuffled, sizeof old_serial_shuffled);
 
   unsigned char rand[8];
   sys_read(fd, rand, sizeof rand);
   sys_close(fd);
 
-  uint8_t shuffled_key[KEY_SIZE];
-  memcpy(shuffled_key, old_key_shuffled.bytes, sizeof old_key_shuffled.bytes);
+  reverse_shuffle(old_serial_shuffled, SERIAL_SIZE, swap_infos);
 
-  struct rc4_key key;
-  for(int i = 0; i < sizeof key.bytes; i++) {
-    key.bytes[i] = shuffled_key[i];
+  common(old_serial_shuffled);
+
+  struct rc4_key old_actual_key;
+  for(int i = 0; i < KEY_SIZE; i++) {
+    old_actual_key.bytes[i] = serial_key[i];
   }
-  DEBUG_FMT("shuffled_key %s", STRINGIFY_KEY(&key));
-
-  reverse_shuffle(shuffled_key, KEY_SIZE, swap_infos);
-
-  for(int i = 0; i < sizeof key.bytes; i++) {
-    key.bytes[i] = shuffled_key[i];
-  }
-  DEBUG_FMT("recovered key %s", STRINGIFY_KEY(&key));
-//  DEBUG_FMT("recovered old_key %s", STRINGIFY_KEY(&old_key));
 
   uint8_t num = ((rand[0] % 4) + 1);
 
   for(uint8_t i = 0; i < num; i++) {
     unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
-    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &key);
+    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &old_actual_key);
   }
 
 
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
                      packed_bin_phdr->p_memsz,
-                     &key);
+                     &old_actual_key);
+
+  unsigned char new_serial_send[SERIAL_SIZE];
+  common_new_serial(new_serial_send);
+
+  struct rc4_key new_actual_key;
+  for(int i = 0; i < KEY_SIZE; i++) {
+    new_actual_key.bytes[i] = serial_key[i];
+  }
+  shuffle(new_serial_send, SERIAL_SIZE, swap_infos);
 
   for(uint8_t i = 0; i < num; i++) {
     unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
-    encrypt_memory_range(&new_key, (void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2);
+    encrypt_memory_range(&new_actual_key, (void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2);
   }
 
-  encrypt_memory_range(&new_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
+  encrypt_memory_range(&new_actual_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
 
-  DEBUG_FMT("new_key %s", STRINGIFY_KEY(&new_key));
   fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
   sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
-  unsigned char shuffle_k[KEY_SIZE];
-  memcpy(shuffle_k, new_key.bytes, sizeof new_key.bytes);
-  shuffle(shuffle_k, KEY_SIZE, swap_infos);
-
   sys_write(fd, swap_infos, sizeof swap_infos);
-  sys_write(fd, shuffle_k, sizeof shuffle_k);
+  sys_write(fd, new_serial_send, sizeof new_serial_send);
   sys_write(fd, rand, sizeof rand);
 
-  struct rc4_key shu_new_key;
-  memcpy(shu_new_key.bytes, shuffle_k, sizeof shuffle_k);
-  DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&shu_new_key));
+//  struct rc4_key shu_new_key;
+//  memcpy(shu_new_key.bytes, shuffle_k, sizeof shuffle_k);
+//  DEBUG_FMT("the program exits normally and is encrypted using the new key %s.", STRINGIFY_KEY(&shu_new_key));
   sys_close(fd);
 }
 
@@ -1044,8 +1094,8 @@ void runtime_start(pid_t child_pid)
 
       if (tlist.size == 0) {
         DEBUG("all threads exited, exiting");
-        struct rc4_key new_key;
-        get_random_bytes(new_key.bytes, sizeof(new_key.bytes));
+//        struct rc4_key new_key;
+//        get_random_bytes_v1(new_key.bytes, sizeof(new_key.bytes));
 
 //        int fd = sys_open("program", O_RDONLY, 777);
 //        size_t size = sys_lseek(fd, 0L, SEEK_END);
@@ -1054,7 +1104,7 @@ void runtime_start(pid_t child_pid)
 //        fd = sys_open("program", O_RDONLY, 777);
 //        sys_read(fd, buf, size);
 
-        external_decryption(new_key);
+        external_decryption();
 //
 //        int fd = sys_open("ouk", O_RDWR | O_CREAT | O_TRUNC, 777);
 //        sys_write(fd, &new_key, sizeof new_key);
