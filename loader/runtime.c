@@ -961,7 +961,7 @@ void external_decryption() {
   unsigned char old_serial_shuffled[SERIAL_SIZE];
   sys_read(fd, &old_serial_shuffled, sizeof old_serial_shuffled);
 
-  unsigned char rand[8];
+  __uint64_t rand[4];
   sys_read(fd, rand, sizeof rand);
   sys_close(fd);
 
@@ -974,11 +974,12 @@ void external_decryption() {
     old_actual_key.bytes[i] = serial_key[i];
   }
 
-  uint8_t num = ((rand[0] % 4) + 1);
+  uint8_t num = 4;
 
-  for(uint8_t i = 0; i < num; i++) {
-    unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
-    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &old_actual_key);
+  for(uint8_t i = 0; i < num; i += 2) {
+    __uint64_t st = rand[i];
+    __uint64_t sz = rand[i + 1];
+    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + st), sz, &old_actual_key);
   }
 
 
@@ -995,9 +996,10 @@ void external_decryption() {
   }
   shuffle(new_serial_send, SERIAL_SIZE, swap_infos);
 
-  for(uint8_t i = 0; i < num; i++) {
-    unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
-    encrypt_memory_range(&new_actual_key, (void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2);
+  for(uint8_t i = 0; i < num; i += 2) {
+    __uint64_t st = rand[i];
+    __uint64_t sz = rand[i + 1];
+    encrypt_memory_range(&new_actual_key, (void *) (packed_bin_phdr->p_vaddr + st), sz);
   }
 
   encrypt_memory_range(&new_actual_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);

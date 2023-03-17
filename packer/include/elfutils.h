@@ -18,6 +18,7 @@ struct mapped_elf {
   const Elf64_Shdr *strtab;
   const Elf64_Shdr *symtab;
   const Elf64_Shdr *text;
+  const Elf64_Shdr *data;
 };
 
 #define ELF_FOR_EACH_SYMBOL(elf, __cursor)                                                        \
