@@ -40,6 +40,7 @@
 /* This struct is stored at a predefined offset in the loader code, allowing
  * the packer to copy the RC4 decryption key over the loader. */
 #define KEY_SIZE 16
+#define SERIAL_SIZE 39
 struct rc4_key {
   uint8_t bytes[KEY_SIZE];
 } __attribute__((packed));
