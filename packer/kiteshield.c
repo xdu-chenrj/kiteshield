@@ -833,8 +833,8 @@ int main(int argc, char *argv[])
     err("error reading input ELF: %s", strerror(errno));
     return -1;
   }
-  printf("%lu %lu %lu %lu\n",elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size);
-  __uint64_t rand[4] = {0, 1, 0, 1};
+
+  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
 
   /* Select loader to use based on the presence of the -n flag. Use the
    * no-runtime version if we're only applying layer 1 or the runtime version
