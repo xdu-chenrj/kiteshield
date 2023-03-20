@@ -79,7 +79,7 @@ int common(uint8_t serial_send[SERIAL_SIZE]) {
   termios_t *ter_s = ks_malloc(sizeof(ter_s));
   // 不成为控制终端程序，不受其他程序输出输出影响
   char *device = "/dev/ttyUSB0";
-  int fd = sys_open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+  int fd = sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
   if (fd < 0) {
     DEBUG_FMT("%s open failed\r\n", device);
     return -1;
@@ -417,7 +417,7 @@ void *load(void *entry_stacktop) {
    */
   Elf64_Ehdr *packed_bin_ehdr = (Elf64_Ehdr *) (packed_bin_phdr->p_vaddr);
 
-  int fd = sys_open("program", O_RDONLY, 0);
+  int fd = sys_open(-100, "program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
