@@ -25,14 +25,11 @@
 #define PROT_EXEC 0x4
 #define PROT_NONE 0x0
 
-/* open syscall constants/defines */
-#define O_RDONLY 00
-#define O_WRONLY 01
-#define O_RDWR 02
-
-#define O_NOCTTY 0400 /* Not fcntl.  */
+/* Serial communication open func constant defines */
+#define O_RDWR        02
+#define O_NOCTTY    0400  /* Not fcntl.  */
 #define O_NDELAY O_NONBLOCK
-#define O_NONBLOCK 04000
+#define O_NONBLOCK   04000
 
 /* c_cflag bits.  */
 #define CSIZE	0000060
@@ -91,6 +88,8 @@
 #define O_RDONLY 00
 #define O_WRONLY 01
 #define O_RDWR 02
+#define O_TRUNC 01000
+#define O_CREAT 0100
 
 /* lseek syscall constants/defines */
 #define SEEK_SET 0
