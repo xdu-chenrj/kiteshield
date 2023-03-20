@@ -368,7 +368,7 @@ void *load(void *entry_stacktop)
   sys_read(fd, &old_key_shuffled, sizeof old_key_shuffled);
   DEBUG_FMT("old_key_shuffled %s", STRINGIFY_KEY(&old_key_shuffled));
 
-  unsigned char rand[8];
+  __uint64_t rand[4];
   sys_read(fd, rand, sizeof rand);
   sys_close(fd);
 
@@ -397,10 +397,11 @@ void *load(void *entry_stacktop)
 //  DEBUG_FMT("program_2 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 //  sys_write(fd, (const char *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
-  uint8_t num = ((rand[0] % 4) + 1);
-  for(uint8_t i = 0; i < num; i++) {
-    unsigned char s = rand[i + 1] % packed_bin_phdr->p_memsz;
-    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + s), (packed_bin_phdr->p_memsz - s) / 2, &key);
+  uint8_t num = 4;
+  for(uint8_t i = 0; i < num; i += 2) {
+    __uint64_t st = rand[i];
+    __uint64_t sz = rand[i + 1];
+    decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + st), sz, &key);
   }
 
   decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,packed_bin_phdr->p_memsz, &key);
