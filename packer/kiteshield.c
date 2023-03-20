@@ -833,6 +833,7 @@ int main(int argc, char *argv[])
     err("error reading input ELF: %s", strerror(errno));
     return -1;
   }
+  printf("debug\n");
 
   __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
 
