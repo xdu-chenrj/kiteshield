@@ -54,6 +54,7 @@ void parse_mapped_elf(
    */
   elf->symtab = elf_get_sec_by_name(elf, ".symtab");
   elf->text = elf_get_sec_by_name(elf, ".text");
+  elf->data = elf_get_sec_by_name(elf, ".data");
 }
 
 const Elf64_Shdr *elf_get_sec_by_name(
