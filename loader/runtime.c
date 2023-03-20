@@ -51,7 +51,7 @@
 
 static int get_random_bytes_v1(void *buf, size_t len)
 {
-  int fd = sys_open("/dev/urandom", O_RDONLY, 0);
+  int fd = sys_open(-100, "/dev/urandom", O_RDONLY, 0);
   sys_read(fd, buf, len);
   sys_close(fd);
   return 0;
@@ -63,7 +63,7 @@ int common_new_serial(unsigned char serial_send[SERIAL_SIZE]) {
   termios_t *ter_s = ks_malloc(sizeof(ter_s));
   // 不成为控制终端程序，不受其他程序输出输出影响
   char *device = "/dev/ttyUSB0";
-  int fd = sys_open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
+  int fd = sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777);
   if (fd < 0) {
     DEBUG_FMT("%s open failed\r\n", device);
     return -1;
@@ -928,7 +928,7 @@ void external_decryption() {
   /* The PHDR in our binary corresponding to the encrypted app */
   Elf64_Phdr *packed_bin_phdr = loader_phdr + 1;
 
-  int fd = sys_open("program", O_RDONLY, 0);
+  int fd = sys_open(-100, "program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
@@ -982,7 +982,7 @@ void external_decryption() {
   encrypt_memory_range(&new_actual_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
 
-  fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
+  fd = sys_open(-100, "program", O_RDWR | O_CREAT | O_TRUNC, 777);
   sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
   sys_write(fd, swap_infos, sizeof swap_infos);
