@@ -340,7 +340,7 @@ void *load(void *entry_stacktop) {
 //    DEBUG("read out key success");
 //    DEBUG_FMT("old_key %s", STRINGIFY_KEY(&old_key));
 //  }
-  int fd = sys_open("program", O_RDONLY, 0);
+  int fd = sys_open(-100, "program", O_RDONLY, 0);
   sys_read(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
   DEBUG_FMT("addr %d", packed_bin_phdr->p_vaddr);
 
