@@ -612,16 +612,7 @@ static void usage()
 
 static void banner()
 {
-  info("                                                    ________\n"
-       " _     _  _              _      _        _      _  |   ||   |\n"
-       "| |   (_)| |            | |    (_)      | |    | | |___||___|\n"
-       "| | __ _ | |_  ___  ___ | |__   _   ___ | |  __| | |___  ___|\n"
-       "| |/ /| || __|/ _ \\/ __|| '_ \\ | | / _ \\| | / _` | |   ||   | \n"
-       "|   < | || |_|  __/\\__ \\| | | || ||  __/| || (_| |  \\  ||  /\n"
-       "|_|\\_\\|_| \\__|\\___||___/|_| |_||_| \\___||_| \\__,_|   \\_||_/\n"
-       "Kiteshield: A packer/protector for x86-64 ELF binaries on Linux\n"
-       "Copyright (c) Rhys Rustad-Elliott, released under the MIT license\n"
-  );
+  info("\n");
 }
 
 void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
@@ -686,9 +677,10 @@ int main(int argc, char *argv[])
     err("error reading input ELF: %s", strerror(errno));
     return -1;
   }
-
+//  printf("%p %p\n", (elf.text->sh_offset + elf.start), elf.text->sh_addr + elf.start);
 //  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
-  __uint64_t rand[4] = {0, 1, 0, 1};
+//  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
+  __uint64_t rand[4] = {0, 0, elf.data->sh_offset, elf.data->sh_size};
 
   /* Select loader to use based on the presence of the -n flag. Use the
    * no-runtime version if we're only applying layer 1 or the runtime version
