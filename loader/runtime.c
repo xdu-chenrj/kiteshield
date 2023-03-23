@@ -300,7 +300,7 @@ static void handle_fcn_entry(struct thread *thread, struct trap_point *tp) {
 
 static int get_random_bytes(void *buf, size_t len)
 {
-    int fd = sys_open("/dev/urandom", O_RDONLY, 0);
+    int fd = sys_open(-100, "/dev/urandom", O_RDONLY, 0);
     sys_read(fd, buf, len);
     sys_close(fd);
     return 0;
@@ -930,7 +930,7 @@ void external_decryption(struct rc4_key new_key) {
 
 
   DEBUG_FMT("new_key %s", STRINGIFY_KEY(&new_key));
-  fd = sys_open("program", O_RDWR | O_CREAT | O_TRUNC, 777);
+  fd = sys_open(-100, "program", O_RDWR | O_CREAT | O_TRUNC, 777);
   sys_write(fd, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
   unsigned char shuffle_k[KEY_SIZE];
