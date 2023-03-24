@@ -1,6 +1,16 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "packer/include/elfutils.h"
+
+void elf_get_sec_all_name(const struct mapped_elf *elf) {
+  Elf64_Shdr *curr_shdr = elf->shdr_tbl;
+
+  for (int i = 0; i < elf->ehdr->e_shnum; i++) {
+    printf("%s\n", elf_get_sec_name(elf, curr_shdr));
+    curr_shdr++;
+  }
+}
 
 void parse_mapped_elf(
     void *start,
@@ -24,6 +34,7 @@ void parse_mapped_elf(
   elf->symtab = elf_get_sec_by_name(elf, ".symtab");
   elf->text = elf_get_sec_by_name(elf, ".text");
   elf->data = elf_get_sec_by_name(elf, ".data");
+  elf_get_sec_all_name(elf);
 }
 
 const Elf64_Shdr *elf_get_sec_by_name(

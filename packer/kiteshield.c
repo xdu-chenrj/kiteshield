@@ -612,7 +612,7 @@ static void usage()
 
 static void banner()
 {
-  info("\n");
+//  info("\n");
 }
 
 void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
