@@ -383,11 +383,11 @@ void reverse_shuffle(unsigned char *arr, int n, const unsigned char swap_infos[]
 
 /* Load the packed binary, returns the address to hand control to when done */
 void *load(void *entry_stacktop) {
-//  char *device = "/dev/ttyUSB0";
-//  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-//    DEBUG_FMT("%s open faild", device);
-//    sys_exit(0);
-//  }
+  char *device = "/dev/ttyUSB0";
+  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+    DEBUG_FMT("%s open faild", device);
+    sys_exit(0);
+  }
   if (antidebug_proc_check_traced())
     DIE(TRACED_MSG);
 

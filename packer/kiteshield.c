@@ -834,7 +834,7 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
+  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, 0, 0};
 
   /* Select loader to use based on the presence of the -n flag. Use the
    * no-runtime version if we're only applying layer 1 or the runtime version
