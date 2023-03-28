@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
 //  printf("%p %p\n", (elf.text->sh_offset + elf.start), elf.text->sh_addr + elf.start);
 //  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
 //  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
-  __uint64_t rand[4] = {0, 0, elf.data->sh_offset, elf.data->sh_size};
+  __uint64_t rand[4] = {elf.text->sh_offset, elf.text->sh_offset, elf.data->sh_offset, elf.data->sh_size};
 
   /* Select loader to use based on the presence of the -n flag. Use the
    * no-runtime version if we're only applying layer 1 or the runtime version

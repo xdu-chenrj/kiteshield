@@ -928,6 +928,11 @@ void external_decryption(struct rc4_key new_key) {
   DEBUG_FMT("recovered key %s", STRINGIFY_KEY(&key));
 //  DEBUG_FMT("recovered old_key %s", STRINGIFY_KEY(&old_key));
 
+
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
+                     packed_bin_phdr->p_memsz,
+                     &key);
+
   uint8_t num = 4;
   for(uint8_t i = 0; i < num; i += 2) {
     __uint64_t st = rand[i];
@@ -935,15 +940,10 @@ void external_decryption(struct rc4_key new_key) {
     decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + st), sz, &key);
   }
 
-
-  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
-                     packed_bin_phdr->p_memsz,
-                     &key);
-
   for(uint8_t i = 0; i < num; i += 2) {
     __uint64_t st = rand[i];
     __uint64_t sz = rand[i + 1];
-    encrypt_memory_range(&key, (void *) (packed_bin_phdr->p_vaddr + st), sz);
+    encrypt_memory_range(&new_key, (void *) (packed_bin_phdr->p_vaddr + st), sz);
   }
 
   encrypt_memory_range(&new_key, (void *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);

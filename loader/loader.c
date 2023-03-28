@@ -397,15 +397,15 @@ void *load(void *entry_stacktop)
 //  DEBUG_FMT("program_2 addr %d %d", packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 //  sys_write(fd, (const char *) packed_bin_phdr->p_vaddr, packed_bin_phdr->p_memsz);
 
+
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,packed_bin_phdr->p_memsz, &key);
+
   uint8_t num = 4;
   for(uint8_t i = 0; i < num; i += 2) {
     __uint64_t st = rand[i];
     __uint64_t sz = rand[i + 1];
     decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + st), sz, &key);
   }
-
-  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,packed_bin_phdr->p_memsz, &key);
-
 
   /* Entry point for ld.so if this is a statically linked binary, otherwise
    * map_elf_from_mem will not touch this and it will be set below. */
