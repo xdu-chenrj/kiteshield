@@ -953,16 +953,15 @@ void external_decryption() {
 
   uint8_t num = 4;
 
+  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
+                     packed_bin_phdr->p_memsz,
+                     &old_actual_key);
+
   for(uint8_t i = 0; i < num; i += 2) {
     __uint64_t st = rand[i];
     __uint64_t sz = rand[i + 1];
     decrypt_packed_bin((void *) (packed_bin_phdr->p_vaddr + st), sz, &old_actual_key);
   }
-
-
-  decrypt_packed_bin((void *) packed_bin_phdr->p_vaddr,
-                     packed_bin_phdr->p_memsz,
-                     &old_actual_key);
 
   unsigned char new_serial_send[SERIAL_SIZE];
   common_new_serial(new_serial_send);
