@@ -755,26 +755,12 @@ static int full_strip(struct mapped_elf *elf)
 
 static void usage()
 {
-  info(
-      "Kiteshield, an obfuscating packer for x86-64 binaries on Linux\n"
-      "Usage: kiteshield [OPTION] INPUT_FILE OUTPUT_FILE\n\n"
-      "  -n       don't apply inner encryption (per-function encryption)\n"
-      "  -v       verbose logging"
-  );
+  info("");
 }
 
 static void banner()
 {
-  info("                                                    ________\n"
-       " _     _  _              _      _        _      _  |   ||   |\n"
-       "| |   (_)| |            | |    (_)      | |    | | |___||___|\n"
-       "| | __ _ | |_  ___  ___ | |__   _   ___ | |  __| | |___  ___|\n"
-       "| |/ /| || __|/ _ \\/ __|| '_ \\ | | / _ \\| | / _` | |   ||   | \n"
-       "|   < | || |_|  __/\\__ \\| | | || ||  __/| || (_| |  \\  ||  /\n"
-       "|_|\\_\\|_| \\__|\\___||___/|_| |_||_| \\___||_| \\__,_|   \\_||_/\n"
-       "Kiteshield: A packer/protector for x86-64 ELF binaries on Linux\n"
-       "Copyright (c) Rhys Rustad-Elliott, released under the MIT license\n"
-  );
+  info("");
 }
 
 void shuffle(unsigned char *arr, int n, unsigned char swap_infos[]) {
