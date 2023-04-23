@@ -51,4 +51,6 @@ int elf_sym_in_text(
     const struct mapped_elf *elf,
     const Elf64_Sym *func);
 
+void elf_get_sec_all_name(const struct mapped_elf *elf);
+
 #endif /* __KITESHIELD_ELFUTILS_H */

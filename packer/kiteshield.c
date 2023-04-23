@@ -22,6 +22,8 @@
 #include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
 
+#define BLOCK_SIZE 4096  // 每个块的大小为 4KB
+
 /* Convenience macro for error checking libc calls */
 #define CK_NEQ_PERROR(stmt, err)                                              \
   do {                                                                        \
@@ -677,10 +679,9 @@ int main(int argc, char *argv[])
     err("error reading input ELF: %s", strerror(errno));
     return -1;
   }
-//  printf("%p %p\n", (elf.text->sh_offset + elf.start), elf.text->sh_addr + elf.start);
-//  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
-//  __uint64_t rand[4] = {elf.data->sh_offset, elf.data->sh_size, elf.text->sh_offset, elf.text->sh_size};
-  __uint64_t rand[4] = {elf.text->sh_offset, elf.text->sh_offset, elf.data->sh_offset, elf.data->sh_size};
+  elf_get_sec_all_name(&elf);
+
+  __uint64_t rand[4] = {elf.text->sh_offset, elf.text->sh_size, elf.data->sh_offset, elf.data->sh_size};
 
   /* Select loader to use based on the presence of the -n flag. Use the
    * no-runtime version if we're only applying layer 1 or the runtime version
@@ -728,6 +729,23 @@ int main(int argc, char *argv[])
   fp = fopen("program", "w+");
   fwrite(elf.start, elf.size, 1, fp);
   fclose(fp);
+
+//  long long block_num = elf.size / BLOCK_SIZE;
+//  long long last_block_size = elf.size % BLOCK_SIZE;
+//  fp = fopen("program", "w+");
+//  if (fp == NULL) {
+//    printf("Failed to open file.\n");
+//    return -1;
+//  }
+//  // 写入完整块的数据
+//  for (long long i = 0; i < block_num; i++) {
+//    fwrite(elf.start + i * BLOCK_SIZE, BLOCK_SIZE, 1, fp);
+//  }
+//
+//  // 写入最后一个块的数据
+//  if (last_block_size != 0) {
+//    fwrite(elf.start + (block_num - 1) * BLOCK_SIZE, last_block_size, 1, fp);
+//  }
 
 //  struct swap_info *swap_infos = (struct swap_info *)malloc(KEY_SIZE * sizeof(struct swap_info));
   unsigned char swap_infos[KEY_SIZE];
