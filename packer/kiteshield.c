@@ -605,7 +605,6 @@ static int full_strip(struct mapped_elf *elf)
 static void usage()
 {
   info(
-      "Kiteshield, an obfuscating packer for x86-64 binaries on Linux\n"
       "Usage: kiteshield [OPTION] INPUT_FILE OUTPUT_FILE\n\n"
       "  -n       don't apply inner encryption (per-function encryption)\n"
       "  -v       verbose logging"
