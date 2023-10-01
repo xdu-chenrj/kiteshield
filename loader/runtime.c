@@ -2,7 +2,7 @@
 
 #include "common/include/defs.h"
 #include "common/include/obfuscation.h"
-#include "common/include/rc4.h"
+#include "common/include/inner_rc4.h"
 
 #include "loader/include/anti_debug.h"
 #include "loader/include/debug.h"
@@ -123,22 +123,34 @@ static struct function *get_fcn_at_addr(uint64_t addr) {
 
   return NULL;
 }
-static void set_byte_at_addr(pid_t tid, uint64_t addr, uint64_t value) {
+
+static void set_8bytes_at_addr(pid_t tid, uint64_t addr, uint64_t value) {
   long word;
   long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
   DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
 
-  res = sys_ptrace(PTRACE_POKETEXT, tid, (void *)addr, (void *)value);
+  // ks_printf(1, "word is %p\n", word);
+
+  res = sys_ptrace(PTRACE_POKETEXT, tid, (void *)addr, &value);
   DIE_IF_FMT(res < 0, "PTRACE_POKETEXT failed with error %d", res);
 }
+
 static void set_int3_at_addr(pid_t tid, uint64_t addr) {
+  // long word;
+  // long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
+  // DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
+  // long mask = ~(0xffffffff);
+  // word &= mask;
+  // word |= INT3;
+
+  ks_printf(1, " INT3 is %p\n", INT3);
+  set_8bytes_at_addr(tid, addr, INT3);
+
   long word;
   long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
   DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
 
-  word &= (~0) << 4;
-  word |= INT3;
-  set_byte_at_addr(tid, addr, word);
+  ks_printf(1, "word is %p\n", word);
 }
 
 static void single_step(pid_t tid) {
@@ -288,8 +300,18 @@ static void handle_fcn_entry(struct thread *thread, struct trap_point *tp) {
     DEBUG_FMT("tid %d: entering already decrypted function %s", thread->tid,
               fcn->name);
   }
+  
+  long word;
+  long res = sys_ptrace(PTRACE_PEEKTEXT, thread->tid, (void *)tp->addr, &word);
+  DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
+  ks_printf(1, "word is %p\n", word);
 
-  set_byte_at_addr(thread->tid, tp->addr, tp->value);
+  set_8bytes_at_addr(thread->tid, tp->addr, tp->value);
+
+  res = sys_ptrace(PTRACE_PEEKTEXT, thread->tid, (void *)tp->addr, &word);
+  DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
+  ks_printf(1, "word is %p\n", word);
+
   single_step(thread->tid);
   set_int3_at_addr(thread->tid, tp->addr);
 
@@ -300,7 +322,7 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
                             struct trap_point *tp) {
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
 
-  set_byte_at_addr(thread->tid, tp->addr, tp->value);
+  set_8bytes_at_addr(thread->tid, tp->addr, tp->value);
   single_step(thread->tid);
   set_int3_at_addr(thread->tid, tp->addr);
 
@@ -407,7 +429,8 @@ static void handle_trap(struct thread *thread, struct thread_list *tlist,
 
   /* Back up the instruction pointer to the start of the int3 in preparation
    * for executing the original instruction */
-  //regs.pc--;
+  // regs.pc--;
+  ks_printf(1, "the pc :%p\n", regs.pc);
 
   struct trap_point *tp = get_tp(iov.regs->pc);
   if (!tp) {
@@ -824,8 +847,9 @@ void runtime_start(pid_t child_pid) {
     const char *type = tp->type == TP_JMP   ? "jmp"
                        : tp->type == TP_RET ? "ret"
                                             : "ent";
-    DEBUG_FMT("%p value: %hhx, type: %s, function: %s (#%d)", tp->addr,
+    DEBUG_FMT("%p value: %p, type: %s, function: %s (#%d)", tp->addr,
               tp->value, type, FCN_FROM_TP(tp)->name, FCN_FROM_TP(tp)->id);
+
   }
 #endif
 
@@ -917,11 +941,11 @@ void runtime_start(pid_t child_pid) {
 }
 
 void do_fork() {
-  char *device = "/dev/ttyUSB0";
-  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-      DEBUG_FMT("%s open faild", device);
-      sys_exit(0);
-  }
+  // char *device = "/dev/ttyUSB0";
+  // if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+  //     DEBUG_FMT("%s open faild", device);
+  //     sys_exit(0);
+  // }
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
   pid_t pid = sys_fork();
   DIE_IF_FMT(pid < 0, "fork failed with error %d", pid);
@@ -936,11 +960,11 @@ void do_fork() {
 }
 
 void child_start_ptrace() {
-  char *device = "/dev/ttyUSB0";
-  if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
-      DEBUG("/dev/ttyUSB0 open faild");
-      sys_exit(0);
-  }
+  // char *device = "/dev/ttyUSB0";
+  // if (sys_open(-100, device, O_RDWR | O_NOCTTY | O_NDELAY, 0777) < 0) {
+  //     DEBUG("/dev/ttyUSB0 open faild");
+  //     sys_exit(0);
+  // }
 
   long ret = sys_ptrace(PTRACE_TRACEME, 0, NULL, NULL);
   DIE_IF_FMT(ret < 0, "child: PTRACE_TRACEME failed with error %d", ret);

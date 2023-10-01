@@ -10,15 +10,29 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-//#include "bddisasm.h"
-
-#include "common/include/rc4.h"
+#include "common/include/inner_rc4.h"
 #include "common/include/obfuscation.h"
 #include "common/include/defs.h"
 #include "packer/include/elfutils.h"
 
 #include "loader/out/generated_loader_rt.h"
 #include "loader/out/generated_loader_no_rt.h"
+
+
+// include encryption headers
+#include "cipher/aes.h"
+#include "cipher/des.h"
+#include "cipher/des3.h"
+#include "cipher/rc4.h"
+#include "cipher_modes/ecb.h"
+#include "rng/yarrow.h"
+#include "pkc/rsa.h"
+
+// include compression headers
+#include "compression/lzma/Lzma.h"
+#include "compression/zstd/zstd.h"
+#include "compression/lzo/minilzo.h"
+#include "compression/ucl/include/ucl.h"
 
 //串口通信
 
@@ -32,6 +46,40 @@ typedef struct serial_data {
     int serfd;//串口文件描述符
 } ser_Data;
 char key[128];
+
+
+YarrowContext yarrowContext;
+
+void printBytes(const char* msg, unsigned long len) {
+    for (int i = 0; i < len; i++) {
+        ks_printf(1, "0x%x(", (unsigned char)(msg[i]));
+        ks_printf(1, "%d) ", (unsigned char)(msg[i]));
+    }
+    ks_printf(1, "%s", "\n");
+}
+
+#define HEAP_ALLOC(var,size) \
+    lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
+
+static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
+
+enum Encryption {
+    RC4 = 1,
+    DES = 2,
+    TDEA = 3,
+    AES = 4
+};
+
+enum Compression {
+    LZMA = 1,
+    LZO = 2,
+    UCL = 3,
+    ZSTD = 4
+};
+
+enum Encryption encryption_algorithm = AES;
+enum Compression compression_algorithm = ZSTD;
+
 
 /* Convenience macro for error checking libc calls */
 #define CK_NEQ_PERROR(stmt, err)                                               \
@@ -128,7 +176,8 @@ static int produce_output_elf(FILE *output_file, struct mapped_elf *elf,
    * sizeof(struct rc4_key) bytes of the loader code (guaranteed by the linker
    * script) */
   Elf64_Addr entry_vaddr = LOADER_ADDR + sizeof(Elf64_Ehdr) +
-                           (sizeof(Elf64_Phdr) * 2) + sizeof(struct rc4_key);
+                           (sizeof(Elf64_Phdr) * 2) + sizeof(struct key_placeholder);
+  printf("%x\n", entry_vaddr - LOADER_ADDR);
   Elf64_Ehdr ehdr;
   ehdr.e_ident[EI_MAG0] = ELFMAG0;
   ehdr.e_ident[EI_MAG1] = ELFMAG1;
@@ -180,7 +229,7 @@ static int produce_output_elf(FILE *output_file, struct mapped_elf *elf,
   app_phdr.p_vaddr = PACKED_BIN_ADDR + app_offset; /* Keep vaddr aligned */
   app_phdr.p_paddr = app_phdr.p_vaddr;
   app_phdr.p_filesz = elf->size;
-  app_phdr.p_memsz = elf->size;
+  app_phdr.p_memsz = elf->origin_size;
   app_phdr.p_flags = PF_R | PF_W;
   app_phdr.p_align = 0x200000;
   CK_NEQ_PERROR(fwrite(&app_phdr, sizeof(app_phdr), 1, output_file), 0);
@@ -201,14 +250,25 @@ int convert_str_to_dec(char* str, int start, int end) {
   }
   return res;
 }
+
+// static int get_random_bytes(void *buf, size_t len) {
+//   unsigned char *p = (unsigned char *) buf;
+//   int index = 0;
+//   for (int i = 0; i < strlen(key); i += 8) {
+//     int dec = convert_str_to_dec(key, i, i + 8);
+//     p[index++] = dec;
+//   }
+//   return 0;
+// }
+
 static int get_random_bytes(void *buf, size_t len) {
-  unsigned char *p = (unsigned char *) buf;
-  int index = 0;
-  for (int i = 0; i < strlen(key); i += 8) {
-    int dec = convert_str_to_dec(key, i, i + 8);
-    p[index++] = dec;
-  }
-  return 0;
+    FILE *f;
+    CK_NEQ_PERROR(f = fopen("/dev/zero", "r"), NULL);
+    CK_NEQ_PERROR(fread(buf, len, 1, f), 0);
+    CK_NEQ_PERROR(fclose(f), EOF);
+    // memset(buf, 0xef, len);
+
+    return 0;
 }
 
 static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len) {
@@ -222,6 +282,72 @@ static void encrypt_memory_range(struct rc4_key *key, void *start, size_t len) {
   }
 }
 
+static void encrypt_memory_range_aes(struct aes_key *key, void *start, size_t len) {
+    size_t key_len = sizeof(struct aes_key);
+    printf("aes key_len : %d\n", key_len);
+    unsigned char* out = (unsigned char*)malloc((len) * sizeof(char));
+    printf("before enc, len : %lu\n", len);
+    // 使用DES加密后密文长度可能会大于明文长度怎么办?
+    // 目前解决方案，保证加密align倍数的明文长度，有可能会剩下一部分字节，不做处理
+    unsigned long actual_encrypt_len = len - len % key_len;
+    printf("actual encrypt len : %lu\n", actual_encrypt_len);
+    if (actual_encrypt_len  == 0)
+        return;
+    AesContext aes_context;
+    aesInit(&aes_context, key->bytes, key_len);
+    ecbEncrypt(AES_CIPHER_ALGO, &aes_context, start, out, actual_encrypt_len);
+    memcpy(start, out, actual_encrypt_len);
+    aesDeinit(&aes_context);
+}
+
+static void encrypt_memory_range_rc4(struct rc4_key *key, void *start, size_t len) {
+    size_t key_len = sizeof(struct rc4_key);
+    printf("rc4 key_len : %d\n", key_len);
+    unsigned char* out = (unsigned char*)malloc((len) * sizeof(char));
+    printf("before enc, len : %lu\n", len);
+    unsigned long actual_encrypt_len = len;
+    printf("actual encrypt len : %lu\n", actual_encrypt_len);
+    if (actual_encrypt_len  == 0)
+        return;
+    Rc4Context rc4_context;
+    rc4Init(&rc4_context, key->bytes, key_len);
+    rc4Cipher(&rc4_context, start, out, actual_encrypt_len);
+    memcpy(start, out, actual_encrypt_len);
+    rc4Deinit(&rc4_context);
+}
+
+static void encrypt_memory_range_des(struct des_key *key, void *start, size_t len) {
+    size_t key_len = sizeof(struct des_key);
+    printf("des key_len : %d\n", key_len);
+    unsigned char* out = (unsigned char*) malloc(len);
+    printf("before enc, len : %lu\n", len);
+    unsigned long actual_encrypt_len = len - len % key_len;
+    printf("actual encrypt len : %lu\n", actual_encrypt_len);
+    if (actual_encrypt_len  == 0)
+        return;
+    DesContext des_context;
+    desInit(&des_context, key->bytes, key_len);
+    ecbEncrypt(DES_CIPHER_ALGO, &des_context, start, out, actual_encrypt_len);
+    memcpy(start, out, actual_encrypt_len);
+    desDeinit(&des_context);
+}
+
+static void encrypt_memory_range_des3(struct des3_key *key, void *start, size_t len) {
+    size_t key_len = sizeof(struct des3_key);
+    printf("des3 key_len : %d\n", key_len);
+    unsigned char* out = (unsigned char*) malloc(len);
+    printf("before enc, len : %lu\n", len);
+    unsigned long actual_encrypt_len = len - len % key_len;
+    printf("actual encrypt len : %lu\n", actual_encrypt_len);
+    if (actual_encrypt_len  == 0)
+        return;
+    Des3Context des3_context;
+    des3Init(&des3_context, key->bytes, key_len);
+    ecbEncrypt(DES3_CIPHER_ALGO, &des3_context, start, out, actual_encrypt_len);
+    memcpy(start, out, actual_encrypt_len);
+    des3Deinit(&des3_context);
+}
+
 static uint64_t get_base_addr(Elf64_Ehdr *ehdr) {
   /* Return the base address that the binary is to be mapped in at runtime. If
    * statically linked, use absolute addresses (ie. base address = 0).
@@ -229,45 +355,6 @@ static uint64_t get_base_addr(Elf64_Ehdr *ehdr) {
   return ehdr->e_type == ET_EXEC ? 0ULL : DYN_PROG_BASE_ADDR;
 }
 
-/* Determines if the given jmp instruction requires replacement by an int3 and
- * thus a trap into the runtime at program execution time. JMPs that do leave
- * or have the potential to leave their containing function require
- * instrumentation as otherwise program control would could be handed to
- * encrypted code.
- *
- * While not normally generated by C compilers for average C code, binaries can
- * and do have these kinds of jmps. setjmp/longjmp is one example. glibc
- * additionally contains several of these jumps as a result of handwritten asm
- * or other nonstandard internal constructs.
- */
-// static int is_instrumentable_jmp(
-//     INSTRUX *ix,
-//     uint64_t fcn_start,
-//     size_t fcn_size,
-//     uint64_t ix_addr)
-//{
-//   /* Indirect jump (eg. jump to value stored in register or at memory
-//   location.
-//    * These must always be instrumented as we have no way at pack-time of
-//    * knowing where they will hand control, thus the runtime must check them
-//    * each time and encrypt/decrypt/do nothing as needed.
-//    */
-//   if (ix->Instruction == ND_INS_JMPNI)
-//     return 1;
-//
-//   /* Jump with (known at pack-time) relative offset, check if it jumps out of
-//    * its function, if so, it requires instrumentation. */
-//   if (ix->Instruction == ND_INS_JMPNR || ix->Instruction == ND_INS_Jcc) {
-//     /* Rel is relative to next instruction so we must add the length */
-//     int64_t displacement =
-//       (int64_t) ix->Operands[0].Info.RelativeOffset.Rel + ix->Length;
-//     uint64_t jmp_dest = ix_addr + displacement;
-//     if (jmp_dest < fcn_start || jmp_dest >= fcn_start + fcn_size)
-//       return 1;
-//   }
-//
-//   return 0;
-// }
 
 /* Instruments all appropriate points in the given function (function entry,
  * ret instructions, applicable jmp instructions) with int3 instructions and
@@ -292,46 +379,6 @@ static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
   info("encrypting function %s with key %s", elf_get_sym_name(elf, func_sym),
        STRINGIFY_KEY(fcn->key));
 
-  //  uint8_t *code_ptr = func_start;
-  //  while (code_ptr < func_start + func_sym->st_size) {
-  //    /* Iterate over every instruction in the function and determine if it
-  //     * requires instrumentation */
-  //    size_t off = (size_t) (code_ptr - func_start);
-  //    uint64_t addr = base_addr + func_sym->st_value + off;
-  //
-  //    INSTRUX ix;
-  //    NDSTATUS status = NdDecode(&ix, code_ptr, ND_CODE_64, ND_DATA_64);
-  //    if (!ND_SUCCESS(status)) {
-  //      err("instruction decoding failed at address %p for function %s",
-  //            addr, elf_get_sym_name(elf, func_sym));
-  //      return -1;
-  //    }
-  //
-  //    int is_jmp_to_instrument = is_instrumentable_jmp(
-  //        &ix,
-  //        fcn->start_addr,
-  //        func_sym->st_size,
-  //        addr);
-  //    int is_ret_to_instrument =
-  //      ix.Instruction == ND_INS_RETF || ix.Instruction == ND_INS_RETN;
-  //
-  //    if (is_jmp_to_instrument || is_ret_to_instrument) {
-  //      struct trap_point *tp =
-  //        (struct trap_point *) &tp_arr[rt_info->ntraps++];
-  //
-  //      verbose("\tinstrumenting %s instr at address %p", ix.Mnemonic, addr,
-  //      off);
-  //
-  //      tp->addr = addr;
-  //      tp->type = is_ret_to_instrument ? TP_RET : TP_JMP;
-  //      tp->value = *code_ptr;
-  //      tp->fcn_i = rt_info->nfuncs;
-  //      *code_ptr = INT3;
-  //    }
-  //
-  //    code_ptr += ix.Length;
-  //  }
-
   /* Instrument entry point */
   struct trap_point *tp = (struct trap_point *)&tp_arr[rt_info->ntraps++];
   tp->addr = base_addr + func_sym->st_value;
@@ -339,9 +386,15 @@ static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
   tp->value = *func_start;
   tp->fcn_i = rt_info->nfuncs;
 
-  encrypt_memory_range(&fcn->key, func_start, func_sym->st_size);
+  ks_printf(1, "+++the first 8 bytes is :");
+  printBytes(func_start, 8);
+
+  // encrypt_memory_range(&fcn->key, func_start, func_sym->st_size);
 
   *func_start = INT3;
+
+  ks_printf(1, "+++the first 8 bytes is :");
+  printBytes(func_start, 8);
 
   rt_info->nfuncs++;
 
@@ -431,30 +484,6 @@ static int apply_inner_encryption(struct mapped_elf *elf,
       continue;
     }
 
-    /* Skip instrumenting/encrypting functions in cases where it simply will
-     * not work or has the potential to mess things up. Specifically, this
-     * means we don't instrument functions that:
-     *
-     *  * Are not in .text (eg. stuff in .init)
-     *
-     *  * Have an address of 0 (stuff that needs to be relocated, this should
-     *  be covered by the point above anyways, but check to be safe)
-     *
-     *  * Have a size of 0 (stuff in crtstuff.c that was compiled with
-     *  -finhibit-size-directive has a size of 0, thus we can't instrument)
-     *
-     *  * Have a size less than 2 (superset of above point). Instrumentation
-     *  requires inserting at least two int3 instructions, each of which is one
-     *  byte.
-     *
-     *  * Start with an instruction that modifies control flow (ie. jmp/ret)
-     *  kiteshield instruments the start of every function AND every out of
-     *  function jmp/return, so instrumenting these would require putting two
-     *  trap points at the same address. It's theoretically possible to support
-     *  this in the runtime, but would add a large amount of complexity to it
-     *  in order to support encrypting the small amount of hand coded asm
-     *  functions in glibc that are like this.
-     */
     if (!elf_sym_in_text(elf, sym)) {
       verbose("not encrypting function %s as it's not in .text",
               elf_get_sym_name(elf, sym));
@@ -463,31 +492,9 @@ static int apply_inner_encryption(struct mapped_elf *elf,
       verbose("not encrypting function %s due to its address or size",
               elf_get_sym_name(elf, sym));
       continue;
+    } else if (strcasecmp(elf_get_sym_name(elf, sym), "call_weak_fn") == 0) {
+      continue;
     }
-
-    /* We need to do this decoding down here as if we don't, sym->st_value
-     * could be 0.
-     */
-    //    uint8_t *func_code_start = elf_get_sym_location(elf, sym);
-    //    INSTRUX ix;
-    //    NDSTATUS status = NdDecode(&ix, func_code_start, ND_CODE_64,
-    //    ND_DATA_64); if (!ND_SUCCESS(status)) {
-    //      err("instruction decoding failed at address %p for function %s",
-    //          sym->st_value, elf_get_sym_name(elf, sym));
-    //      return -1;
-    //    }
-    //
-    //    if (ix.Instruction == ND_INS_JMPNI ||
-    //        ix.Instruction == ND_INS_JMPNR ||
-    //        ix.Instruction == ND_INS_Jcc ||
-    //        ix.Instruction == ND_INS_CALLNI ||
-    //        ix.Instruction == ND_INS_CALLNR ||
-    //        ix.Instruction == ND_INS_RETN) {
-    //      verbose("not encrypting function %s due to first instruction being
-    //      jmp/ret/call",
-    //              elf_get_sym_name(elf, sym));
-    //      continue;
-    //    }
 
     if (process_func(elf, sym, *rt_info, fcn_arr, tp_arr) == -1) {
       err("error instrumenting function %s", elf_get_sym_name(elf, sym));
@@ -513,23 +520,83 @@ static int apply_inner_encryption(struct mapped_elf *elf,
 /* Encrypts the input binary as a whole injects the outer key into the loader
  * code so the loader can decrypt.
  */
-static int apply_outer_encryption(struct mapped_elf *elf, void *loader_start,
-                                  size_t loader_size) {
-  struct rc4_key key;
-  CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
-  info("applying outer encryption with key %s", STRINGIFY_KEY(key));
+static int apply_outer_encryption(
+        struct mapped_elf *elf,
+        void *loader_start,
+        size_t loader_size) {
 
-  /* Encrypt the actual binary */
-  encrypt_memory_range(&key, elf->start, elf->size);
-
-  /* Obfuscate Key */
-  struct rc4_key obfuscated_key;
-  obf_deobf_outer_key(&key, &obfuscated_key, loader_start, loader_size);
-
-  /* Copy over obfuscated key so the loader can decrypt */
-  *((struct rc4_key *)loader_start) = obfuscated_key;
-
-  return 0;
+    if (encryption_algorithm == AES) {
+        printf("[Packer] Using AES...\n");
+        struct aes_key key;
+        CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
+        info("applying outer encryption with key %s", STRINGIFY_KEY(key));
+        /* Encrypt the actual binary */
+        encrypt_memory_range_aes(&key, elf->start, elf->size);
+        /* Obfuscate Key */
+        struct aes_key obfuscated_key;
+        obf_deobf_outer_key_aes(&key, &obfuscated_key, loader_start, loader_size);
+        info("obfuscated_key %s", STRINGIFY_KEY(obfuscated_key));
+        // 把混淆后的key写入loader
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        memset(m_key_placeholder.bytes, 0, sizeof(m_key_placeholder.bytes));
+        memcpy(m_key_placeholder.bytes, obfuscated_key.bytes, sizeof(obfuscated_key));
+        m_key_placeholder.encryption = AES;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    } else if (encryption_algorithm == DES) {
+        printf("[Packer] Using DES...\n");
+        struct des_key key;
+        CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
+        info("applying outer encryption with key %s", STRINGIFY_KEY(key));
+        /* Encrypt the actual binary */
+        encrypt_memory_range_des(&key, elf->start, elf->size);
+        /* Obfuscate Key */
+        struct des_key obfuscated_key;
+        obf_deobf_outer_key_des(&key, &obfuscated_key, loader_start, loader_size);
+        info("obfuscated_key %s", STRINGIFY_KEY(obfuscated_key));
+        // 把混淆后的key写入loader
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        memset(m_key_placeholder.bytes, 0, sizeof(m_key_placeholder.bytes));
+        memcpy(m_key_placeholder.bytes, obfuscated_key.bytes, sizeof(obfuscated_key));
+        m_key_placeholder.encryption = DES;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    } else if (encryption_algorithm == RC4) {
+        printf("[Packer] Using RC4...\n");
+        struct rc4_key key;
+        CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
+        info("applying outer encryption with key %s", STRINGIFY_KEY(key));
+        /* Encrypt the actual binary */
+        // 修改elf长度
+        encrypt_memory_range_rc4(&key, elf->start, elf->size);
+        /* Obfuscate Key */
+        struct rc4_key obfuscated_key;
+        obf_deobf_outer_key_rc4(&key, &obfuscated_key, loader_start, loader_size);
+        info("obfuscated_key %s", STRINGIFY_KEY(obfuscated_key));
+        // 把混淆后的key写入loader
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        memset(m_key_placeholder.bytes, 0, sizeof(m_key_placeholder.bytes));
+        memcpy(m_key_placeholder.bytes, obfuscated_key.bytes, sizeof(obfuscated_key));
+        m_key_placeholder.encryption = RC4;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    } else if (encryption_algorithm == TDEA) {
+        printf("[Packer] Using TDEA...\n");
+        struct des3_key key;
+        CK_NEQ_PERROR(get_random_bytes(key.bytes, sizeof(key.bytes)), -1);
+        info("applying outer encryption with key %s", STRINGIFY_KEY(key));
+        /* Encrypt the actual binary */
+        // 修改elf长度
+        encrypt_memory_range_des3(&key, elf->start, elf->size);
+        /* Obfuscate Key */
+        struct des3_key obfuscated_key;
+        obf_deobf_outer_key_des3(&key, &obfuscated_key, loader_start, loader_size);
+        info("obfuscated_key %s", STRINGIFY_KEY(obfuscated_key));
+        // 把混淆后的key写入loader
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        memset(m_key_placeholder.bytes, 0, sizeof(m_key_placeholder.bytes));
+        memcpy(m_key_placeholder.bytes, obfuscated_key.bytes, sizeof(obfuscated_key));
+        m_key_placeholder.encryption = TDEA;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    }
+    return 0;
 }
 
 static void *inject_rt_info(void *loader, struct runtime_info *rt_info,
@@ -710,98 +777,285 @@ int serial_communication() {
   return 0;
 }
 
+int apply_outer_compression(struct mapped_elf* elf, void* loader_start) {
+    if (compression_algorithm == ZSTD) {
+        printf("[Packer] Using ZSTD Compressing...\n");
+        uint8_t* input = elf->start;
+        int size = elf->size;
+        hexdump(input, size);
+        uint32_t compressedSize = ZSTD_compressBound(size);
+        uint8_t* compressedBlob = malloc(compressedSize);
+        compressedSize = ZSTD_compress(compressedBlob, compressedSize, input, size, 1);
+        if (compressedBlob) {
+            printf("Compressed: %d to %d\n", size, compressedSize);
+        } else {
+            printf("Nope, we screwed it\n");
+            return;
+        }
+        memcpy(elf->start, compressedBlob, compressedSize);
+        elf->size = compressedSize;
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        m_key_placeholder.compression = ZSTD;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    } else if (compression_algorithm == LZO) {
+        printf("[Packer] Using LZO Compressing...\n");
+        int r;
+        lzo_uint in_len;
+        lzo_uint out_len;
+        if (lzo_init() != LZO_E_OK)
+        {
+            printf( "internal error - lzo_init() failed !!!\n");
+            printf( "(this usually indicates a compiler bug - try recompiling\nwithout optimizations, and enable '-DLZO_DEBUG' for diagnostics)\n");
+            return 3;
+        }
+        in_len = elf->size;
+        out_len = in_len + in_len / 16 + 64 + 3;
+
+        const unsigned char* in = elf->start;
+        uint8_t* out = malloc(out_len);
+
+        r = lzo1x_1_compress(in, in_len, out, &out_len, wrkmem);
+        if (r == LZO_E_OK) {
+            printf( "compressed %lu bytes into %lu bytes\n",
+                (unsigned long) in_len, (unsigned long) out_len);
+        } else {
+            /* this should NEVER happen */
+            printf( "internal error - compression failed: %d\n", r);
+            return 2;
+        }
+        /* check for an incompressible block */
+        if (out_len >= in_len) {
+            printf( "This block contains incompressible data.\n");
+            return 0;
+        }
+        memcpy(elf->start, out, out_len);
+        free(out);
+        elf->size = out_len;
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        m_key_placeholder.compression = LZO;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    } else if (compression_algorithm == LZMA) {
+        printf("[Packer] Using LZMA Compressing...\n");
+        uint8_t* input = elf->start;
+        int size = elf->size;
+        hexdump(input, size);
+        uint32_t compressedSize;
+        uint8_t* compressedBlob = lzmaCompress(input, size, &compressedSize);
+        if (compressedBlob) {
+            printf("Compressed:\n");
+            hexdump(compressedBlob, compressedSize);
+        } else {
+            printf("Nope, we screwed it\n");
+            return;
+        }
+        memcpy(elf->start, compressedBlob, compressedSize);
+        elf->size = compressedSize;
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        m_key_placeholder.compression = LZMA;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    } else if (compression_algorithm == UCL) {
+        printf("[Packer] Using UCL Compressing...\n");
+        int level = 5;
+        uint8_t* input = elf->start;
+        uint32_t size = elf->size;
+        uint32_t compressedSize = size + size / 8 + 256;
+        uint8_t* compressedBlob = ucl_malloc(compressedSize);
+        if (ucl_init() != UCL_E_OK)
+        {
+            ks_printf(1, "internal error - ucl_init() failed !!!\n");
+            return 1;
+        }
+        int r = ucl_nrv2b_99_compress(input, size, compressedBlob, &compressedSize, NULL, level, NULL, NULL);
+        if (r == UCL_E_OUT_OF_MEMORY)
+        {
+            ks_printf(1, "out of memory in compress\n");
+            return 3;
+        }
+        if (r == UCL_E_OK)
+            ks_printf(1, "compressed %d bytes into %d bytes\n", (unsigned long) size, (unsigned long) compressedSize);
+
+        /* check for an incompressible block */
+        if (compressedSize >= size)
+        {
+            ks_printf(1, "This block contains incompressible data.\n");
+            return 0;
+        }
+        memcpy(elf->start, compressedBlob, compressedSize);
+        ucl_free(compressedBlob);
+        elf->size = compressedSize;
+        struct key_placeholder m_key_placeholder = *(struct key_placeholder*)loader_start;
+        m_key_placeholder.compression = UCL;
+        memcpy(loader_start, &m_key_placeholder, sizeof(struct key_placeholder));
+    }
+    return 0;
+}
+
+int hexToDec(char c) {
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    else if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    } else {
+        return -1;
+    }
+}
+
 int main(int argc, char *argv[]) {
-  char *input_path, *output_path;
-  int layer_one_only = 0;
-  int c;
-  int ret;
+    printf("long size:%d\n", sizeof(long));
+    char *input_path, *output_path;
+    int layer_one_only = 0;
+    int c;
+    int ret;
 
-  int r = serial_communication();
-  if(r == -1) return 0;
-
-  while ((c = getopt(argc, argv, "nv")) != -1) {
-    switch (c) {
-    case 'n':
-      layer_one_only = 1;
-      break;
-    case 'v':
-      log_verbose = 1;
-      break;
-    default:
-      usage();
-      return -1;
+    for (int i = 0; i < argc; i++) {
+        printf("argv[%d] : %s\n", i, argv[i]);
     }
-  }
+    if (argc != 6) {
+        printf("[ERROR]: 接收参数错误！\n");
+        return -1;
+    }
+    input_path = argv[1];
+    output_path = argv[4];
+    printf("DEBUG: argv[2] : %d\n", atoi(argv[2]));
+    switch(atoi(argv[2])) {
+        case 1:
+            encryption_algorithm = RC4;
+            break;
+        case 2:
+            encryption_algorithm = DES;
+            break;
+        case 3:
+            encryption_algorithm = TDEA;
+            break;
+        case 4:
+            encryption_algorithm = AES;
+            break;
+    }
 
-  if (optind + 1 < argc) {
-    input_path = argv[optind];
-    output_path = argv[optind + 1];
-  } else {
-    usage();
-    return -1;
-  }
+    switch (atoi(argv[3])) {
+        case 1:
+            compression_algorithm = LZMA;
+            break;
+        case 2:
+            compression_algorithm = LZO;
+            break;
+        case 3:
+            compression_algorithm = UCL;
+            break;
+        case 4:
+            compression_algorithm = ZSTD;
+            break;
+    }
 
-  banner();
-
-  /* Read ELF to be packed */
-  info("reading input binary %s", input_path);
-  struct mapped_elf elf;
-  ret = read_input_elf(input_path, &elf);
-  if (ret == -1) {
-    err("error reading input ELF: %s", strerror(errno));
-    return -1;
-  }
-
-  /* Select loader to use based on the presence of the -n flag. Use the
-   * no-runtime version if we're only applying layer 1 or the runtime version
-   * if we're applying layer 1 and 2 encryption.
-   */
-  void *loader;
-  size_t loader_size;
-  // 是否有1层加密
-  if (!layer_one_only) {
-    struct runtime_info *rt_info = NULL;
-    ret = apply_inner_encryption(&elf, &rt_info);
+    /* Read ELF to be packed */
+    info("reading input binary %s", input_path);
+    struct mapped_elf elf;
+    ret = read_input_elf(input_path, &elf);
     if (ret == -1) {
-      err("could not apply inner encryption");
-      return -1;
+        err("error reading input ELF: %s", strerror(errno));
+        return -1;
     }
 
-    loader = inject_rt_info(GENERATED_LOADER_RT, rt_info,
-                            sizeof(GENERATED_LOADER_RT), &loader_size);
-  } else {
-    info("not applying inner encryption and omitting runtime (-n)");
+    /* Select loader to use based on the presence of the -n flag. Use the
+     * no-runtime version if we're only applying layer 1 or the runtime version
+     * if we're applying layer 1 and 2 encryption.
+     */
+    ks_malloc_init();
+    void *loader;
+    size_t loader_size;
+    // 是否需要对内层加密
+    if (!layer_one_only) {
+        struct runtime_info *rt_info = NULL;
+        ret = apply_inner_encryption(&elf, &rt_info);
+        if (ret == -1) {
+            err("could not apply inner encryption");
+            return -1;
+        }
 
-    loader = GENERATED_LOADER_NO_RT;
-    loader_size = sizeof(GENERATED_LOADER_NO_RT);
-  }
+        loader = inject_rt_info(GENERATED_LOADER_RT, rt_info,
+                                sizeof(GENERATED_LOADER_RT), &loader_size);
+    } else {
+        info("not applying inner encryption and omitting runtime (-n)");
 
-  /* Fully strip binary */
-  if (full_strip(&elf) == -1) {
-    err("could not strip binary");
-    return -1;
-  }
+        loader = GENERATED_LOADER_NO_RT;
+        loader_size = sizeof(GENERATED_LOADER_NO_RT);
+    }
 
-  /* Apply outer encryption */
-  ret = apply_outer_encryption(&elf, loader, loader_size);
-  if (ret == -1) {
-    err("could not apply outer encryption");
-    return -1;
-  }
+    // 写入MAC地址
+    // 拿到loader开头的placeholder
+    if (strlen(argv[5]) != 17) {
+        printf("MAC地址格式错误, 正在退出...\n");
+        return -1;
+    }
 
-  /* Write output ELF */
-  FILE *output_file;
-  CK_NEQ_PERROR(output_file = fopen(output_path, "w"), NULL);
-  ret = produce_output_elf(output_file, &elf, loader, loader_size);
-  if (ret == -1) {
-    err("could not produce output ELF");
-    return -1;
-  }
+    struct key_placeholder place_holder = *((struct key_placeholder*)loader);
+    uint8_t* mac_buff = argv[5];
+    uint8_t one_byte_val = 0;
+    int idx = 0;
+    for (int i = 0; i < 17; i += 3) {
+        one_byte_val = hexToDec(mac_buff[i]) * 16 + hexToDec(mac_buff[i + 1]);
+        place_holder.mac_address[idx++] = one_byte_val;
+    }
 
-  CK_NEQ_PERROR(fclose(output_file), EOF);
-  CK_NEQ_PERROR(
-      chmod(output_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH), -1);
 
-  info("output ELF has been written to %s", output_path);
-  return 0;
+    uint8_t seed[32];
+    yarrowInit(&yarrowContext);
+    yarrowSeed(&yarrowContext, seed, sizeof(seed));
+
+    RsaPublicKey publicKey;
+    RsaPrivateKey privateKey;
+    rsaInitPublicKey(&publicKey);
+    rsaInitPrivateKey(&privateKey);
+    rsaGenerateKeyPair(&yarrowPrngAlgo, &yarrowContext, 1024, 65537, &privateKey, &publicKey);
+    rsaPrivateKeyFormat(&privateKey, place_holder.my_rsa_key, &place_holder.rsa_key_args_len);
+
+    // 把placeholder写回
+    memcpy(loader, &place_holder, sizeof(struct key_placeholder));
+
+    /* Fully strip binary */
+    // if (full_strip(&elf) == -1) {
+    //     err("could not strip binary");
+    //     return -1;
+    // }
+
+
+    ret = apply_outer_compression(&elf, loader);
+    if (ret != 0) {
+        printf("[compression]: something wrong!\n");
+    }
+
+    /* Apply outer encryption */
+    ret = apply_outer_encryption(&elf, loader, loader_size);
+    if (ret == -1) {
+        err("could not apply outer encryption");
+        return -1;
+    }
+
+
+    // 用Rsa加密对称密钥
+    char cipher[128];
+    int cipher_len;
+    place_holder = *((struct key_placeholder*)loader);
+    rsaesPkcs1v15Encrypt(&yarrowPrngAlgo, &yarrowContext, &publicKey, place_holder.bytes, 117, cipher, &cipher_len);
+    memcpy(place_holder.bytes, cipher, 128);
+    memcpy(loader, &place_holder, sizeof(struct key_placeholder));
+    
+    verbose("packed app data : %d %d %d %d\n", *(unsigned char*)elf.start, *((unsigned char*)elf.start + 1),*((unsigned char*)elf.start + 2),*((unsigned char*)elf.start + 3));
+
+
+    /* Write output ELF */
+    FILE *output_file;
+    CK_NEQ_PERROR(output_file = fopen(output_path, "w"), NULL);
+    ret = produce_output_elf(output_file, &elf, loader, loader_size);
+    if (ret == -1) {
+        err("could not produce output ELF");
+        return -1;
+    }
+
+    CK_NEQ_PERROR(fclose(output_file), EOF);
+    CK_NEQ_PERROR(chmod(output_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH), -1);
+
+    info("output ELF has been written to %s", output_path);
+    ks_malloc_deinit();
+    return 0;
 }

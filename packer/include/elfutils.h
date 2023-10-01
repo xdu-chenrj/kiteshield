@@ -9,6 +9,7 @@
 struct mapped_elf {
   uint8_t *start;
   size_t size;
+  size_t origin_size;
 
   Elf64_Ehdr *ehdr;
   Elf64_Phdr *phdr_tbl;

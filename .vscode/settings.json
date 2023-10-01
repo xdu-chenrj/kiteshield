@@ -1,0 +1,11 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "malloc.h": "c",
+        "defs.h": "c",
+        "elfutils.h": "c",
+        "typeinfo": "c",
+        "type_traits": "c",
+        "compare": "c"
+    }
+}

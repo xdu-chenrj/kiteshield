@@ -17,6 +17,7 @@ void parse_mapped_elf(
    * size是源elf的文件大小
    */
   elf->size = size;
+  elf->origin_size = size;
   /**
    * elf的头是申请空间的起始地址
    */

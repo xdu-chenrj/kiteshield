@@ -1,4 +1,4 @@
-#include "common/include/rc4.h"
+#include "common/include/inner_rc4.h"
 
 /* https://en.wikipedia.org/wiki/RC4#Description */
 void rc4_init(struct rc4_state *rc4, unsigned char *key, unsigned int keylen)
@@ -31,4 +31,3 @@ unsigned char rc4_get_byte(struct rc4_state *rc4)
 
   return rc4->S[(rc4->S[rc4->i] + rc4->S[rc4->j]) % 256];
 }
-

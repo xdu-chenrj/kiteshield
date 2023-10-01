@@ -3,7 +3,7 @@
 #include "loader/include/syscalls.h"
 
 /* 20 MiB */
-#define HEAP_SIZE (1 << 20)
+#define HEAP_SIZE (20 * 1 << 20)
 
 void *heap_base = NULL;
 
@@ -104,6 +104,14 @@ void *ks_malloc(size_t size)
   target->in_use = 1;
 
   return target + 1;
+}
+
+void* ks_calloc(size_t num, size_t size) {
+    void* p = ks_malloc(num * size);
+    if (p == NULL)
+        return NULL;
+    memset(p, 0, num * size);
+    return p;
 }
 
 void ks_free(void *ptr)

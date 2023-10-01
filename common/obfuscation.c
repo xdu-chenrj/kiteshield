@@ -21,28 +21,94 @@
  * obfuscate the key in the loader code and then deobfuscate the key in the
  * loader code.
  */
-void obf_deobf_outer_key(
+void obf_deobf_outer_key_aes(
+    struct aes_key *old_key,
+    struct aes_key *new_key,
+    unsigned char *loader_bin,
+    unsigned int loader_bin_size)
+{
+  __builtin_memcpy(new_key, old_key->bytes, sizeof(struct aes_key));
+
+#ifdef NO_ANTIDEBUG
+  return;
+#endif
+
+  /* Skip the struct des_key of course, we just want the code */
+  unsigned int loader_index = KEY_SIZE_AFTER_ALIGN;
+  unsigned int key_index = 0;
+  while (loader_index < loader_bin_size / 10) {
+    new_key->bytes[key_index] ^= loader_bin[loader_index];
+    loader_index++;
+    key_index = (key_index + 1) % sizeof(struct aes_key);
+  }
+}
+
+void obf_deobf_outer_key_des(
+    struct des_key *old_key,
+    struct des_key *new_key,
+    unsigned char *loader_bin,
+    unsigned int loader_bin_size)
+{
+  __builtin_memcpy(new_key, old_key->bytes, sizeof(struct des_key));
+
+#ifdef NO_ANTIDEBUG
+  return;
+#endif
+
+  /* Skip the struct des_key of course, we just want the code */
+  unsigned int loader_index = KEY_SIZE_AFTER_ALIGN;
+  unsigned int key_index = 0;
+  while (loader_index < loader_bin_size / 10) {
+    new_key->bytes[key_index] ^= loader_bin[loader_index];
+    loader_index++;
+    key_index = (key_index + 1) % sizeof(struct des_key);
+  }
+}
+
+void obf_deobf_outer_key_des3(
+    struct des3_key *old_key,
+    struct des3_key *new_key,
+    unsigned char *loader_bin,
+    unsigned int loader_bin_size)
+{
+  __builtin_memcpy(new_key, old_key->bytes, sizeof(struct des3_key));
+
+#ifdef NO_ANTIDEBUG
+  return;
+#endif
+
+  /* Skip the struct des_key of course, we just want the code */
+  unsigned int loader_index = KEY_SIZE_AFTER_ALIGN;
+  unsigned int key_index = 0;
+  while (loader_index < loader_bin_size / 10) {
+    new_key->bytes[key_index] ^= loader_bin[loader_index];
+    loader_index++;
+    key_index = (key_index + 1) % sizeof(struct des3_key);
+  }
+}
+
+void obf_deobf_outer_key_rc4(
     struct rc4_key *old_key,
     struct rc4_key *new_key,
     unsigned char *loader_bin,
     unsigned int loader_bin_size)
 {
-  __builtin_memcpy(new_key, old_key, sizeof(*old_key));
+  __builtin_memcpy(new_key, old_key->bytes, sizeof(struct rc4_key));
 
 #ifdef NO_ANTIDEBUG
   return;
 #endif
 
   /* Skip the struct rc4_key of course, we just want the code */
-  unsigned int loader_index = sizeof(struct rc4_key);
+  unsigned int loader_index = KEY_SIZE_AFTER_ALIGN;
   unsigned int key_index = 0;
-  while (loader_index < loader_bin_size) {
-    new_key->bytes[key_index] ^= *((unsigned char *) loader_bin + loader_index);
-
-    loader_index ++;
-    key_index = (key_index + 1) % sizeof(new_key->bytes);
+  while (loader_index < loader_bin_size / 10) {
+    new_key->bytes[key_index] ^= loader_bin[loader_index];
+    loader_index++;
+    key_index = (key_index + 1) % sizeof(struct rc4_key);
   }
 }
+
 
 /* Runtime info obfuscation / deobfuscation function.
  *
