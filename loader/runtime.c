@@ -124,27 +124,21 @@ static struct function *get_fcn_at_addr(uint64_t addr) {
   return NULL;
 }
 
-static void set_8bytes_at_addr(pid_t tid, uint64_t addr, uint64_t value) {
+static void set_4bytes_at_addr(pid_t tid, uint64_t addr, uint32_t value) {
   long word;
   long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
   DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
 
-  // ks_printf(1, "word is %p\n", word);
+  word &= (~0) << 32;
+  word |= value;
 
-  res = sys_ptrace(PTRACE_POKETEXT, tid, (void *)addr, &value);
+  res = sys_ptrace(PTRACE_POKETEXT, tid, (void *)addr, &word);
   DIE_IF_FMT(res < 0, "PTRACE_POKETEXT failed with error %d", res);
 }
 
 static void set_int3_at_addr(pid_t tid, uint64_t addr) {
-  // long word;
-  // long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
-  // DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
-  // long mask = ~(0xffffffff);
-  // word &= mask;
-  // word |= INT3;
-
   ks_printf(1, " INT3 is %p\n", INT3);
-  set_8bytes_at_addr(tid, addr, INT3);
+  set_4bytes_at_addr(tid, addr, INT3);
 
   long word;
   long res = sys_ptrace(PTRACE_PEEKTEXT, tid, (void *)addr, &word);
@@ -177,6 +171,13 @@ retry:
      * in the queue next */
     goto retry;
   }
+
+  struct user_regs_struct regs;
+  struct iov iov;
+  iov.regs = &regs;
+  iov.base = sizeof(struct user_regs_struct);
+  res = sys_ptrace(PTRACE_GETREGSET, tid,(void *) 1, &iov);
+  ks_printf(1, "the pc :%p\n", regs.pc);
 
   DIE_IF_FMT(
       WSTOPSIG(wstatus) != SIGTRAP,
@@ -300,19 +301,18 @@ static void handle_fcn_entry(struct thread *thread, struct trap_point *tp) {
     DEBUG_FMT("tid %d: entering already decrypted function %s", thread->tid,
               fcn->name);
   }
-  
-  long word;
-  long res = sys_ptrace(PTRACE_PEEKTEXT, thread->tid, (void *)tp->addr, &word);
-  DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
-  ks_printf(1, "word is %p\n", word);
 
-  set_8bytes_at_addr(thread->tid, tp->addr, tp->value);
-
-  res = sys_ptrace(PTRACE_PEEKTEXT, thread->tid, (void *)tp->addr, &word);
-  DIE_IF_FMT(res != 0, "PTRACE_PEEKTEXT failed with error %d", res);
-  ks_printf(1, "word is %p\n", word);
+  set_4bytes_at_addr(thread->tid, tp->addr, tp->value);
 
   single_step(thread->tid);
+
+  struct user_regs_struct regs;
+  struct iov iov;
+  iov.regs = &regs;
+  iov.base = sizeof(struct user_regs_struct);
+  sys_ptrace(PTRACE_GETREGSET, thread->tid,(void *) 1, &iov);
+  ks_printf(1, "in handle_fcn_entry the pc :%p\n", regs.pc);
+
   set_int3_at_addr(thread->tid, tp->addr);
 
   FCN_ENTER(thread, fcn);
@@ -322,7 +322,7 @@ static void handle_fcn_exit(struct thread *thread, struct thread_list *tlist,
                             struct trap_point *tp) {
   DIE_IF(antidebug_proc_check_traced(), TRACED_MSG);
 
-  set_8bytes_at_addr(thread->tid, tp->addr, tp->value);
+  set_4bytes_at_addr(thread->tid, tp->addr, tp->value);
   single_step(thread->tid);
   set_int3_at_addr(thread->tid, tp->addr);
 

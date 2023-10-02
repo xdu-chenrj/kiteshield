@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#define INT3 0xd4200000d4200000
+#define INT3 0xd4200000
 
 /* Address at which the loader is initially loaded by the kernel on exec (ie.
  * the p_vaddr field in the binary). Note that if this is updated, the base
@@ -119,7 +119,7 @@ struct trap_point {
 
   /* Byte that was overwritten by the int3, needed so we can overwrite and
    * execute the original instruction */
-  uint64_t value;
+  uint32_t value;
   /* Index into the function array for the containing function */
   int fcn_i;
 } __attribute__((packed));

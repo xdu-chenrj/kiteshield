@@ -52,10 +52,10 @@ YarrowContext yarrowContext;
 
 void printBytes(const char* msg, unsigned long len) {
     for (int i = 0; i < len; i++) {
-        ks_printf(1, "0x%x(", (unsigned char)(msg[i]));
-        ks_printf(1, "%d) ", (unsigned char)(msg[i]));
+        printf( "0x%02x(", (unsigned char)(msg[i]));
+        printf( "%d) ", (unsigned char)(msg[i]));
     }
-    ks_printf(1, "%s", "\n");
+    printf( "%s", "\n");
 }
 
 #define HEAP_ALLOC(var,size) \
@@ -363,7 +363,7 @@ static uint64_t get_base_addr(Elf64_Ehdr *ehdr) {
 static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
                         struct runtime_info *rt_info, struct function *func_arr,
                         struct trap_point *tp_arr) {
-  uint64_t *func_start = elf_get_sym_location(elf, func_sym);
+  uint8_t *func_start = elf_get_sym_location(elf, func_sym);
   uint64_t base_addr = get_base_addr(elf->ehdr);
   struct function *fcn = &func_arr[rt_info->nfuncs];
 
@@ -383,7 +383,7 @@ static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
   struct trap_point *tp = (struct trap_point *)&tp_arr[rt_info->ntraps++];
   tp->addr = base_addr + func_sym->st_value;
   tp->type = TP_FCN_ENTRY;
-  tp->value = *func_start;
+  tp->value = *(uint32_t*) func_start;
   tp->fcn_i = rt_info->nfuncs;
 
   ks_printf(1, "+++the first 8 bytes is :");
@@ -391,7 +391,8 @@ static int process_func(struct mapped_elf *elf, Elf64_Sym *func_sym,
 
   // encrypt_memory_range(&fcn->key, func_start, func_sym->st_size);
 
-  *func_start = INT3;
+  *(uint32_t*)func_start = INT3;
+  printf("[debug] func start is %08x\n", *(uint32_t*)func_start);
 
   ks_printf(1, "+++the first 8 bytes is :");
   printBytes(func_start, 8);

@@ -39,7 +39,7 @@ const Elf64_Shdr *elf_get_sec_by_name(
     const struct mapped_elf *elf,
     const char *name);
 
-uint64_t *elf_get_sym_location(
+uint8_t *elf_get_sym_location(
     const struct mapped_elf *elf,
     const Elf64_Sym *sym);
 
